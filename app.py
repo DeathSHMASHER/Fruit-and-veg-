@@ -4,13 +4,13 @@
 ║   GitHub: SHAHRIYARTAUFIK/Fruit-and-veg-                ║
 ║   Run:  python app.py                                   ║
 ╚══════════════════════════════════════════════════════════╝
-  
+
 ARCHITECTURE (100% reliable — no custom YOLO required)
 ───────────────────────────────────────────────────────
 Step 1 → facebook/detr-resnet-50  (DETR object detector)
          Finds bounding boxes for anything food-like in the image.
          Uses standard COCO classes to locate regions.
- 
+
 Step 2 → jazzmacedo/fruits-and-vegetables-detector-36  (ViT)
          Runs on EACH detected crop to give the ACCURATE label
          (Apple, Mango, Carrot, Broccoli … 36 classes total).
@@ -55,12 +55,48 @@ EMOJI_MAP = {
     "bell pepper": "🫑", "chilli pepper": "🌶️", "peas": "🟢",
 }
 
+FRUITS = {
+    "apple", "banana", "orange", "grape", "strawberry", "watermelon", 
+    "mango", "pineapple", "pear", "peach", "cherry", "lemon", "avocado", 
+    "tomato", "coconut", "kiwi", "pomegranate", "sweetpotato",
+}
+
+VEGETABLES = {
+    "broccoli", "carrot", "corn", "cucumber", "garlic", "onion", "pepper", 
+    "potato", "eggplant", "lettuce", "mushroom", "beetroot", "spinach", 
+    "capsicum", "paprika", "cauliflower", "cabbage", "ginger", "bell pepper", 
+    "chilli pepper", "peas",
+}
+
 def get_emoji(label: str) -> str:
     label = label.lower()
     for key, emo in EMOJI_MAP.items():
         if key in label:
             return emo
     return "🌿"
+
+
+def get_category(label: str) -> str:
+    """Determine if item is a fruit or vegetable."""
+    label_lower = label.lower()
+    
+    # Check if fruit
+    if label_lower in FRUITS:
+        return "Fruit"
+    
+    # Check if vegetable
+    if label_lower in VEGETABLES:
+        return "Vegetable"
+    
+    # Check for partial matches
+    for fruit in FRUITS:
+        if fruit in label_lower:
+            return "Fruit"
+    for veg in VEGETABLES:
+        if veg in label_lower:
+            return "Vegetable"
+    
+    return "Unknown"
 
 # ── Lazy-load models ──────────────────────────────────────────
 _detr_pipeline = None
@@ -140,8 +176,9 @@ def detect_produce(image: np.ndarray):
         # Draw box
         draw.rectangle([x1, y1, x2, y2], outline=color, width=4)
 
-        # Badge with ACCURATE ViT label
-        badge = f"  {vit_label}  {vit_conf:.0%}  "
+        # Badge with ACCURATE ViT label and category
+        category = get_category(vit_label)
+        badge = f"  {category}: {vit_label}  {vit_conf:.0%}  "
         bw    = len(badge) * 8
         by    = max(y1 - 26, 0)
         draw.rectangle([x1, by, x1 + bw, by + 26], fill=color)
@@ -162,7 +199,8 @@ def detect_produce(image: np.ndarray):
         color = BOX_COLORS[0]
         pad   = 12
         draw.rectangle([pad, pad, W - pad, H - pad], outline=color, width=4)
-        badge = f"  {best_label}  {best_conf:.0%}  "
+        category = get_category(best_label)
+        badge = f"  {category}: {best_label}  {best_conf:.0%}  "
         bw    = len(badge) * 8
         draw.rectangle([pad, pad, pad + bw, pad + 26], fill=color)
         draw.text((pad + 4, pad + 4), badge, fill="white")
@@ -174,16 +212,18 @@ def detect_produce(image: np.ndarray):
         report += "### 📦 Detected & Identified (DETR + ViT)\n"
         for lbl, conf in annotated:
             emo = get_emoji(lbl)
+            category = get_category(lbl)
             bar = "█" * int(conf * 10) + "░" * (10 - int(conf * 10))
-            report += f"- {emo} **{lbl}** `{bar}` {conf:.0%}\n"
+            report += f"- {emo} **It is a {category}**: **{lbl}** `{bar}` {conf:.0%}\n"
         report += "\n"
 
     if top_whole:
         report += "### 🤖 Whole-Image Classification (36 classes)\n"
         for lbl, score in top_whole:
             emo = get_emoji(lbl.lower())
+            category = get_category(lbl)
             bar = "█" * int(score * 10) + "░" * (10 - int(score * 10))
-            report += f"- {emo} **{lbl}** `{bar}` {score:.0%}\n"
+            report += f"- {emo} **It is a {category}**: **{lbl}** `{bar}` {score:.0%}\n"
 
     if not annotated and not top_whole:
         report += (
