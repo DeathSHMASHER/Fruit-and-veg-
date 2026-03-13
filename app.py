@@ -1,23 +1,3 @@
-"""
-╔══════════════════════════════════════════════════════════╗
-║   🥝🥕  Fruit & Vegetable Detector  v4  (FINAL)         ║
-║   GitHub: SHAHRIYARTAUFIK/Fruit-and-veg-                ║
-║   Run:  python app.py                                   ║
-╚══════════════════════════════════════════════════════════╝
-
-ARCHITECTURE (100% reliable — no custom YOLO required)
-───────────────────────────────────────────────────────
-Step 1 → facebook/detr-resnet-50  (DETR object detector)
-         Finds bounding boxes for anything food-like in the image.
-         Uses standard COCO classes to locate regions.
-
-Step 2 → jazzmacedo/fruits-and-vegetables-detector-36  (ViT)
-         Runs on EACH detected crop to give the ACCURATE label
-         (Apple, Mango, Carrot, Broccoli … 36 classes total).
-         Also runs on the whole image as a fallback.
-
-Result → Boxes on image labelled with ViT names (accurate) ✅
-"""
 
 import warnings
 warnings.filterwarnings("ignore")
