@@ -11,74 +11,149 @@ pinned: false
 
 # 🥝 ProduceVision Studio Pro — Enterprise Fruit & Vegetable AI
 
-> **High-Precision 63-Class Produce Localization · ViT-36 Consensus Verification · Zero-Tofu Clean Canvas · USDA Nutritional Intelligence**
+> **High-Precision 63-Class Produce Localization · ViT-36 Consensus Verification · Human & Pet Aware · Mobile-Optimized Camera with 90° Rotation & Flip · USDA Nutritional Intelligence**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
 ![YOLOv8](https://img.shields.io/badge/YOLOv8m-63_Produce_Classes-brightgreen)
+![COCO](https://img.shields.io/badge/YOLOv8n-Human_&_Pet_Aware-indigo)
 ![HuggingFace](https://img.shields.io/badge/HuggingFace-ViT--36--Ensemble-orange)
-![Gradio](https://img.shields.io/badge/UI-Gradio_6-yellow)
+![Gradio](https://img.shields.io/badge/UI-Gradio_6.8-yellow)
+![Mobile](https://img.shields.io/badge/Mobile-Responsive_%26_Camera_Rotate-teal)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
-## ✨ What's New & Upgraded
+## 🌟 Overview & Key Capabilities
 
-| Feature | Description |
-|---------|-------------|
-| ⚡ **63-Class YOLOv8m Specialist** | Upgraded to high-capacity YOLOv8 Medium covering 63 distinct fruits, vegetables, squashes, and root crops (potatoes, pumpkins, avocados, zucchini, mushrooms, etc.). |
-| 🛡️ **Dual-Engine Consensus** | Cross-validates every candidate detection against ViT-36 to eliminate false classifications (e.g. potatoes never mislabeled as pears). |
-| 🏷️ **Clean High-DPI Canvas** | Replaced unrendered font glyphs with ASCII-safe high-contrast badges (`[Veg] Potato 95%`). |
-| 🎚️ **Precision Sensitivity Controls** | Fine-tune **Confidence Threshold**, **IoU NMS Overlap**, and preset modes (`🎯 Consensus Mode` vs `⚡ High Sensitivity`). |
-| 🥗 **USDA Nutritional Analytics** | Real-time calorie and macronutrient breakdown (Carbs, Protein, Fiber, Sugars) + Key Vitamins & Health benefits. |
-| 👨‍🍳 **Smart Pantry Chef** | Recommends instant healthy recipes based on the fresh ingredients detected in your image. |
-| 📋 **Exportable Checklist** | Auto-generates a clean produce inventory / shopping checklist with item counts. |
-| 🌟 **1-Click Test Showcase** | 6 built-in demo photos (Potatoes, Fruit Basket, Bell Peppers, Tomatoes, Carrots, Bananas). |
-| 📷 **Webcam & Clipboard Support** | Take live snapshots via webcam, paste from clipboard, or drag-and-drop. |
+**ProduceVision Studio Pro** is an enterprise-grade computer vision and dietary intelligence platform. Built with a **Multi-Model Consensus Architecture**, it seamlessly localizes, identifies, and categorizes produce across cluttered grocery baskets, kitchen countertops, and live mobile camera feeds with industry-leading precision and ultra-low error rates.
+
+In addition to detecting **63 distinct fruit and vegetable varieties**, the system features dedicated **Human and Pet Recognition**, preventing people and household animals from ever being misclassified as produce while providing instant pet-toxic food safety advisories.
 
 ---
 
-## 🔧 How the Dual-Engine Works
+## 📱 Mobile Compatibility & Camera Controls
+
+ProduceVision Studio Pro is engineered from the ground up for smartphone browsers (iOS Safari, Android Chrome, Firefox Mobile) as well as desktop displays:
+
+1. **Fluid Responsive UI**:
+   - Dynamic viewport sizing with zero horizontal overflow.
+   - Stacks controls, live viewfinder, bounding box canvases, and nutrition dashboards into a clean, mobile-first touch layout.
+
+2. **🔄 90° Clockwise Camera Rotation**:
+   - Mobile camera sensors frequently record images rotated 90° sideways when transitioning between portrait and landscape modes.
+   - With a single tap on the **`🔄 Rotate 90° Clockwise`** button, images rotate cleanly and re-align bounding boxes without degrading quality.
+
+3. **↔️ Horizontal Mirror / Flip**:
+   - Front-facing mobile cameras mirror the selfie perspective. The **`↔️ Mirror / Flip`** button instantly corrects camera inversion.
+
+4. **⚡ Live Auto-Detect**:
+   - Snap a photo directly via the smartphone camera or webcam — the system instantly runs detection and renders bounding boxes without requiring secondary button presses.
+   - Works seamlessly with uploaded images, camera snapshots, or clipboard pastes.
+
+---
+
+## 🛡️ Multi-Entity Awareness: Humans, Dogs, and Cats
+
+Traditional produce detectors often misclassify background humans, fingers, or nearby pets as strange produce items. ProduceVision Studio Pro eliminates this issue with integrated COCO multi-entity recognition:
+
+- **👤 Human & Face Detection (`[HUMAN]: Human 95%`)**:
+  - Automatically identifies humans and faces in the frame.
+  - People are labeled with distinct indigo badges and tracked in the `Subjects` counter.
+  - **Zero Nutritional Contamination**: Humans are strictly excluded from produce calorie, carbohydrate, and recipe calculations.
+
+- **🐶 Dog & 🐱 Cat Detection (`[PET]: Dog 94%`, `[PET]: Cat 92%`)**:
+  - Detects pets and animals with vibrant coral badges.
+  - **Pet Safety Advisory**: When pets are detected alongside produce, the system displays an automatic warning alerting owners about foods toxic to dogs and cats (e.g., *grapes, raisins, onions, garlic, and avocado*).
+
+- **Livestock & Farm Animals**:
+  - Distinguishes horses, sheep, cows, and other common animals in agricultural environments.
+
+---
+
+## 🧠 Low-Error Dual-Engine Consensus Pipeline
+
+To achieve the lowest possible error rate, candidate objects undergo a multi-stage verification pipeline:
 
 ```
-                        User Photo / Webcam / Demo
-                                    │
-                                    ▼
-                 ┌──────────────────────────────────────┐
-                 │  YOLOv8 Produce Specialist (best.pt) │
-                 │  Fast localization of produce boxes  │
-                 └──────────────────┬───────────────────┘
-                                    │
-                         [Extracted Item Crops]
-                          (with Context Padding)
-                                    │
-                                    ▼
-                 ┌──────────────────────────────────────┐
-                 │    ViT-36 High-Fidelity Classifier   │
-                 │    Cross-validates candidate labels   │
-                 └──────────────────┬───────────────────┘
-                                    │
-                        [Smart Ensemble Decision]
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        ▼                           ▼                           ▼
-[Annotated Visual Map]      [USDA Nutrition Sheet]     [Smart Recipe & Pantry]
-(Boxes + Confidence +       (Calories, Carbs,          (Healthy Culinary Ideas
- Crops Gallery)              Vitamins & Benefits)       + Exportable Checklist)
+                            User Image / Mobile Camera / Clipboard
+                                              │
+                        ┌─────────────────────┴─────────────────────┐
+                        ▼                                           ▼
+          ┌───────────────────────────┐               ┌───────────────────────────┐
+          │   COCO Multi-Entity YOLO  │               │   63-Class Produce YOLO   │
+          │   Detects Humans & Pets   │               │   Detects Fruits & Vegs   │
+          └─────────────┬─────────────┘               └─────────────┬─────────────┘
+                        │                                           │
+                        │                                [Candidate Bounding Boxes]
+                        │                                           │
+                        │                                [10% Context-Padded Crops]
+                        │                                           │
+                        │                                           ▼
+                        │                             ┌───────────────────────────┐
+                        │                             │    ViT-36 Cross-Validator │
+                        │                             │    Classifies image crop  │
+                        │                             └─────────────┬─────────────┘
+                        │                                           │
+                        │                             ┌─────────────┴─────────────┐
+                        │                             │   Consensus Decision:     │
+                        │                             │   • Agree: Boost confidence
+                        │                             │   • Disagree: Cross-validate
+                        │                             │   • Strict Gating: Reject 
+                        │                             │     non-produce backgrounds
+                        │                             └─────────────┬─────────────┘
+                        ▼                                           ▼
+        ┌───────────────────────────────────────────────────────────────────────────┐
+        │                 Non-Maximum Suppression (IoU Deduplication)              │
+        └─────────────────────────────────────┬─────────────────────────────────────┘
+                                              │
+                                              ▼
+                    ┌───────────────────────────────────────────────────┐
+                    │            Final High-DPI Annotated Canvas        │
+                    │        ASCII-Safe Badges (Zero Tofu Font Bugs)    │
+                    └─────────────────────────┬─────────────────────────┘
+                                              │
+                    ┌─────────────────────────┼─────────────────────────┐
+                    ▼                         ▼                         ▼
+         [Detection Breakdown]     [USDA Nutrition Sheet]     [Chef Pantry & Checklist]
+         • Verified item count     • Calories, Carbs, Protein • Instant healthy recipes
+         • Subject summary         • Micronutrients & health  • Auto-generated checklist
+         • Pet toxicity advisory   • Per 100g USDA reference    for grocery tracking
 ```
 
----
-
-## 📋 Supported Classes (36 Total)
-
-**Fruits:**
-> Apple · Banana · Coconut · Grape · Green Orange · Kiwi · Lemon · Mango · Melon · Orange · Peach · Pear · Pineapple · Pomegranate · Strawberry · Watermelon
-
-**Vegetables & Herbs:**
-> Beetroot · Bell Pepper (Capsicum) · Bitter Gourd · Bottle Gourd · Broccoli · Cabbage · Carrot · Cauliflower · Chilli Pepper · Corn (Maize) · Cucumber · Eggplant · Garlic · Ginger · Jalapeño · Lettuce · Okra · Onion · Paprika · Peas · Potato · Radish · Soy Beans · Spinach · Sweetcorn · Sweet Potato · Tomato · Turnip
+### Why Error Rates Are Minimized:
+1. **Context-Padded Crop Extraction**: Crops include a 10% outer border so leaf stems and natural textures are preserved for ViT verification.
+2. **Specialized Class Handling**: Items unique to the 63-class model (such as *potatoes, pumpkins, avocados, zucchini, and mushrooms*) are protected from false downgrades.
+3. **Strict Fallback Confidence Gating**: If no candidate produce boxes are detected, the full-frame fallback requires `≥ 65%` classification confidence. Random background scenes (desks, walls, furniture) are safely rejected rather than forced into produce categories.
+4. **Clean Canvas Badge Rendering**: Uses ASCII-safe text labels (`[FRUIT]: Apple 98%`, `[VEG]: Potato 94%`, `[HUMAN]: Human 96%`), eliminating unrendered square box glyphs (`[]`) across mobile browsers and server environments.
 
 ---
 
-## 🚀 Quick Start
+## 🥗 Supported Produce Classes (63 Total)
+
+### 🍎 Fruits & Berries (28 Varieties)
+> Apple · Apricot · Avocado · Banana · Blackberry · Blueberry · Cantaloupe · Cherry · Clementine · Coconut · Date · Fig · Grape · Kiwi · Lemon · Lime · Mandarin Orange · Mango · Melon · Orange · Papaya · Peach · Pear · Pineapple · Pomegranate · Raspberry · Strawberry · Watermelon
+
+### 🥦 Vegetables, Squashes, Roots & Herbs (35 Varieties)
+> Artichoke · Asparagus · Aubergine (Eggplant) · Beetroot · Bell Pepper (Capsicum) · Bitter Gourd · Bottle Gourd · Broccoli · Cabbage · Carrot · Cauliflower · Celery · Chilli Pepper · Corn (Maize) · Courgette (Zucchini) · Cucumber · Garlic · Ginger · Green Bean · Green Onion (Scallion) · Jalapeño · Lettuce · Mushroom · Okra · Onion · Paprika · Peas · Potato · Pumpkin · Radish · Soy Beans · Spinach · Sweetcorn · Sweet Potato · Tomato · Turnip
+
+---
+
+## 📊 Nutritional Intelligence & Chef Recommendations
+
+- **USDA Reference Values**: Every recognized fruit and vegetable links to USDA FoodData Central metrics per 100g serving:
+  - Calories (kcal), Carbohydrates (g), Dietary Fiber (g), Protein (g), and Natural Sugars (g).
+  - Key Micronutrients (e.g., *Potassium, Vitamin C, Beta-Carotene, Lycopene, Allicin*).
+  - Health & Metabolic benefits.
+- **Smart Pantry Chef**: Proposes tailored, healthy recipes derived from the ingredients spotted in the frame (e.g., *Crispy Herb-Roasted Potatoes, Stuffed Mediterranean Peppers, Arugula Pear Salad*).
+- **Exportable Inventory Checklist**: Generates a clean text inventory list ready to copy into shopping apps or notes.
+
+---
+
+## 🚀 Quick Start & Installation
+
+### Prerequisites
+- Python 3.10, 3.11, 3.12, or 3.13
+- Git
 
 ### 1 — Clone the Repository
 ```bash
@@ -91,22 +166,50 @@ cd Fruit-and-veg-
 pip install -r requirements.txt
 ```
 
-### 3 — Launch the Application
-- **Windows (Double-click or run):**
-  ```cmd
-  run_app.bat
-  ```
-  *or*
-  ```cmd
-  py -3.13 app.py
-  ```
+### 3 — Run the Application
 
-Your browser opens automatically at **http://localhost:7860** 🎉
+#### On Windows (Double-click or run):
+```cmd
+run_app.bat
+```
+*or in PowerShell / Command Prompt:*
+```cmd
+py -3.13 app.py
+```
+
+#### On Linux / macOS:
+```bash
+python3 app.py
+```
+
+The application will launch and automatically open your default browser at:
+👉 **`http://localhost:7860`**
 
 ---
 
-## 💡 Pro Tips for Best Accuracy
+## 🎛️ Sensitivity Controls & Presets
 
-- **Single or Multiple Items**: Works on isolated single fruits as well as multi-item market baskets.
-- **Cluttered Images**: If produce items are overlapping, slide the **Confidence Threshold** down to `0.25–0.30` and adjust **IoU NMS** to `0.40`.
-- **Lighting**: Bright, natural lighting produces the highest confidence scores.
+- **🎯 Consensus Mode (Ultra-Precision)**: Enforces dual-model verification with a minimum confidence floor of `0.28`. Ideal for clean lighting and minimizing false positives.
+- **⚡ High Sensitivity (Crowded Basket)**: Drops detection floor to `0.20` and optimizes overlap thresholds to catch occluded or partially visible items in deep baskets.
+- **Confidence Threshold Slider (`0.10` – `0.90`)**: Directly adjust sensitivity in real time.
+- **IoU NMS Overlap Slider (`0.10` – `0.80`)**: Fine-tune duplicate bounding box suppression.
+
+---
+
+## 🌐 Cloud Deployment (Hugging Face Spaces)
+
+This repository is pre-configured for direct deployment on Hugging Face Spaces using the Gradio SDK.
+
+```bash
+# Push directly to Hugging Face Spaces using the included helper script:
+py -3.13 upload_to_hf.py <YOUR_HF_WRITE_TOKEN>
+```
+
+Live Space URL:
+🔗 **https://huggingface.co/spaces/NEwBEE67/FruitnVeg**
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

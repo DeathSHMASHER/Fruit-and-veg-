@@ -13,7 +13,7 @@ from PIL import Image, ImageDraw, ImageFont
 import gradio as gr
 
 # ==============================================================================
-# 🎨 VIBRANT COLOR PALETTE & COMPREHENSIVE PRODUCE DATABASE (63+ CLASSES)
+# 🎨 COLOR PALETTE & PRODUCE DATABASE (63+ PRODUCE CLASSES + HUMANS & PETS)
 # ==============================================================================
 
 BOX_COLORS = [
@@ -28,6 +28,17 @@ BOX_COLORS = [
     "#84CC16",  # Lime
     "#F97316",  # Orange
 ]
+
+# Special COCO entities: Human faces/persons, cats, dogs, etc.
+COCO_SPECIAL_ENTITIES = {
+    0: {"name": "Human", "emoji": "👤", "category": "Human", "color": "#6366F1", "tag": "HUMAN"},
+    15: {"name": "Cat", "emoji": "🐱", "category": "Pet / Animal", "color": "#F43F5E", "tag": "PET"},
+    16: {"name": "Dog", "emoji": "🐶", "category": "Pet / Animal", "color": "#FB923C", "tag": "PET"},
+    17: {"name": "Horse", "emoji": "🐴", "category": "Animal", "color": "#A855F7", "tag": "ANIMAL"},
+    18: {"name": "Sheep", "emoji": "🐑", "category": "Animal", "color": "#14B8A6", "tag": "ANIMAL"},
+    19: {"name": "Cow", "emoji": "🐄", "category": "Animal", "color": "#06B6D4", "tag": "ANIMAL"},
+    21: {"name": "Bear", "emoji": "🐻", "category": "Animal", "color": "#D97706", "tag": "ANIMAL"},
+}
 
 EMOJI_MAP = {
     "potato": "🥔", "sweet potato": "🍠", "pumpkin": "🎃", "onion": "🧅", "green onion": "🧅",
@@ -44,6 +55,7 @@ EMOJI_MAP = {
     "green bean": "🟢", "asparagus": "🌿", "celery": "🥬", "artichoke": "🌿", "blueberry": "🫐",
     "blackberry": "🫐", "raspberry": "🍓", "papaya": "🥭", "fig": "🫐", "date": "🌴",
     "almond": "🌰", "apricot": "🍑", "bean curd": "🧊", "tofu": "🧊",
+    "human": "👤", "person": "👤", "cat": "🐱", "dog": "🐶", "horse": "🐴", "cow": "🐄",
 }
 
 FRUITS = {
@@ -181,15 +193,16 @@ NUTRITION_DB = {
 }
 
 # ==============================================================================
-# 🧠 DUAL-ENGINE AI LOADER (63-CLASS YOLOv8m + ViT-36 CLASSIFIER)
+# 🧠 DUAL-ENGINE AI LOADER (63-CLASS YOLOv8m + COCO HUMAN/PET DETECTOR + ViT-36)
 # ==============================================================================
 
 _yolo_63 = None
+_yolo_coco = None
 _vit_36 = None
 
 def get_models():
     """Load high-accuracy models lazily."""
-    global _yolo_63, _vit_36
+    global _yolo_63, _yolo_coco, _vit_36
 
     if _yolo_63 is None:
         from ultralytics import YOLO
@@ -197,10 +210,14 @@ def get_models():
         if os.path.exists(local_weights):
             _yolo_63 = YOLO(local_weights)
         else:
-            # Fallback to auto-download from Hugging Face hub
             from huggingface_hub import hf_hub_download
             hub_path = hf_hub_download("Senu-12/snapstock-fruit-vegetable-detector", "yolov8/fruit_vegetable_yolov8m.pt")
             _yolo_63 = YOLO(hub_path)
+
+    if _yolo_coco is None:
+        from ultralytics import YOLO
+        local_coco = "yolov8n.pt"
+        _yolo_coco = YOLO(local_coco if os.path.exists(local_coco) else "yolov8n.pt")
 
     if _vit_36 is None:
         from transformers import pipeline
@@ -210,45 +227,43 @@ def get_models():
             top_k=3,
         )
 
-    return _yolo_63, _vit_36
+    return _yolo_63, _yolo_coco, _vit_36
 
 # ==============================================================================
-# 🛠️ CANONICAL NORMALIZATION & LABEL CLEANING
+# 🛠️ HELPER FUNCTIONS (ROTATION, FLIP, DEDUPLICATION)
 # ==============================================================================
+
+def rotate_image_90(image: Optional[np.ndarray]) -> Optional[np.ndarray]:
+    """Rotate image 90 degrees clockwise for mobile devices."""
+    if image is None:
+        return None
+    pil_img = Image.fromarray(image).rotate(-90, expand=True)
+    return np.array(pil_img)
+
+def flip_image_horizontal(image: Optional[np.ndarray]) -> Optional[np.ndarray]:
+    """Mirror/Flip image horizontally (for front-facing selfie cameras)."""
+    if image is None:
+        return None
+    pil_img = Image.fromarray(image).transpose(Image.FLIP_LEFT_RIGHT)
+    return np.array(pil_img)
 
 def clean_label(raw: str) -> str:
     """Normalize complex raw dataset names into clean friendly names."""
     c = raw.lower().strip()
-    # Handle multi-synonyms from dataset: 'bell pepper/capsicum' -> 'Bell Pepper'
     if "/" in c:
         parts = c.split("/")
         c = parts[0].strip()
 
     mapping = {
-        "cuke": "cucumber",
-        "ail": "garlic",
-        "gingerroot": "ginger",
-        "edible corn": "corn",
-        "maize": "corn",
-        "aubergine": "eggplant",
-        "chilli": "chili",
-        "chilli pepper": "chili",
-        "cayenne": "chili pepper",
-        "red pepper": "bell pepper",
-        "spring onion": "green onion",
-        "scallion": "green onion",
-        "kiwi fruit": "kiwi",
-        "cocoanut": "coconut",
-        "orange fruit": "orange",
-        "mandarin orange": "orange",
-        "cantaloup": "cantaloupe",
-        "pea food": "peas",
-        "pea": "peas",
-        "daikon": "radish",
-        "courgette": "zucchini",
-        "jalepeno": "jalapeño",
-        "raddish": "radish",
-        "sweetpotato": "sweet potato",
+        "cuke": "cucumber", "ail": "garlic", "gingerroot": "ginger",
+        "edible corn": "corn", "maize": "corn", "aubergine": "eggplant",
+        "chilli": "chili", "chilli pepper": "chili", "cayenne": "chili pepper",
+        "red pepper": "bell pepper", "spring onion": "green onion",
+        "scallion": "green onion", "kiwi fruit": "kiwi", "cocoanut": "coconut",
+        "orange fruit": "orange", "mandarin orange": "orange",
+        "cantaloup": "cantaloupe", "pea food": "peas", "pea": "peas",
+        "daikon": "radish", "courgette": "zucchini", "jalepeno": "jalapeño",
+        "raddish": "radish", "sweetpotato": "sweet potato",
     }
     for k, v in mapping.items():
         if k in c:
@@ -266,6 +281,10 @@ def get_emoji(label: str) -> str:
 
 def get_category(label: str) -> str:
     lbl = label.lower()
+    if "person" in lbl or "human" in lbl:
+        return "Human"
+    if "dog" in lbl or "cat" in lbl or "animal" in lbl or "pet" in lbl:
+        return "Pet / Animal"
     if lbl in FRUITS or any(f in lbl for f in FRUITS):
         return "Fruit"
     if lbl in VEGETABLES or any(v in lbl for v in VEGETABLES):
@@ -302,10 +321,6 @@ def get_drawing_font(size: int = 15):
                 pass
     return ImageFont.load_default()
 
-# ==============================================================================
-# 🎯 CORE DETECTION & CONSENSUS ENGINE
-# ==============================================================================
-
 def filter_overlapping_boxes(boxes_data: List[Dict], iou_threshold: float = 0.35) -> List[Dict]:
     """Suppress duplicate overlapping bounding boxes, keeping highest confidence."""
     if not boxes_data:
@@ -331,42 +346,67 @@ def filter_overlapping_boxes(boxes_data: List[Dict], iou_threshold: float = 0.35
             kept.append(b)
     return kept
 
+# ==============================================================================
+# 🎯 CORE MULTI-MODEL DETECTION & CONSENSUS PIPELINE
+# ==============================================================================
+
 def detect_and_analyze(
     image: Optional[np.ndarray],
     conf_thresh: float = 0.30,
-    iou_thresh: float = 0.45,
+    iou_thresh: float = 0.40,
     mode: str = "🎯 Consensus Mode (Ultra-Precision)",
 ):
     if image is None:
-        return None, "<div class='empty-state'>⚠️ Please upload an image or select a demo sample to begin analysis.</div>", "", "", ""
+        return None, "<div class='empty-state'>⚠️ Please upload an image, take a mobile photo, or select a demo sample to begin analysis.</div>", "", "", ""
 
-    yolo_model, vit_model = get_models()
+    yolo_produce, yolo_coco, vit_model = get_models()
     pil_img = Image.fromarray(image).convert("RGB")
     W, H = pil_img.size
 
-    # Adjust sensitivity based on preset mode
     eff_conf = conf_thresh
     if "Ultra-Precision" in mode:
         eff_conf = max(conf_thresh, 0.28)
     elif "High Sensitivity" in mode:
         eff_conf = min(conf_thresh, 0.20)
 
-    # 1. Run High-Capacity 63-Class Produce YOLO
-    results = yolo_model(pil_img, conf=eff_conf, iou=iou_thresh, verbose=False)[0]
-
+    # 1. Run COCO Detector for Humans, Dogs, Cats, and Animals (conf=0.28 for high sensitivity)
+    coco_res = yolo_coco(pil_img, conf=0.28, verbose=False)[0]
     raw_candidates = []
-    for box in results.boxes:
+
+    for box in coco_res.boxes:
+        cls_id = int(box.cls[0])
+        conf = float(box.conf[0])
+        if cls_id in COCO_SPECIAL_ENTITIES:
+            ent = COCO_SPECIAL_ENTITIES[cls_id]
+            xyxy = [int(v) for v in box.xyxy[0].tolist()]
+            raw_candidates.append({
+                "box": xyxy,
+                "raw_label": ent["name"],
+                "clean_label": ent["name"],
+                "category": ent["category"],
+                "emoji": ent["emoji"],
+                "conf": conf,
+                "color": ent["color"],
+                "tag": ent["tag"],
+                "is_special": True,
+            })
+
+    # 2. Run 63-Class Produce Specialist YOLO
+    prod_res = yolo_produce(pil_img, conf=eff_conf, iou=iou_thresh, verbose=False)[0]
+
+    for box in prod_res.boxes:
         xyxy = [int(v) for v in box.xyxy[0].tolist()]
         cls_id = int(box.cls[0])
-        raw_yolo_label = yolo_model.names[cls_id]
-        yolo_conf = float(box.conf[0])
+        raw_label = yolo_produce.names[cls_id]
+        conf = float(box.conf[0])
         raw_candidates.append({
             "box": xyxy,
-            "raw_label": raw_yolo_label,
-            "conf": yolo_conf,
+            "raw_label": raw_label,
+            "conf": conf,
+            "is_special": False,
         })
 
-    # Deduplicate overlapping boxes
+    # 3. Deduplicate overlapping boxes
     candidates = filter_overlapping_boxes(raw_candidates, iou_threshold=iou_thresh)
 
     detections = []
@@ -376,70 +416,73 @@ def detect_and_analyze(
 
     for idx, cand in enumerate(candidates):
         x1, y1, x2, y2 = cand["box"]
-        raw_yolo_label = cand["raw_label"]
-        yolo_conf = cand["conf"]
 
-        # 2. Extract crop with 10% context padding for ViT verification
-        bx_w, bx_h = (x2 - x1), (y2 - y1)
-        pad_x, pad_y = int(bx_w * 0.10), int(bx_h * 0.10)
-        crop_box = (
-            max(0, x1 - pad_x),
-            max(0, y1 - pad_y),
-            min(W, x2 + pad_x),
-            min(H, y2 + pad_y)
-        )
-        crop_img = pil_img.crop(crop_box)
-
-        # 3. ViT Classification on the crop
-        vit_label, vit_conf = "Unknown", 0.0
-        try:
-            vit_preds = vit_model(crop_img)
-            if vit_preds:
-                vit_label = vit_preds[0]["label"].replace("_", " ").title()
-                vit_conf = float(vit_preds[0]["score"])
-        except Exception:
-            pass
-
-        # 4. Smart Consensus Logic
-        # Normalize labels
-        clean_yolo = clean_label(raw_yolo_label)
-        clean_vit = clean_label(vit_label)
-
-        # Rule A: Cross-Verification Agreement
-        if clean_yolo.lower() == clean_vit.lower() or clean_yolo.lower() in clean_vit.lower():
-            final_label = clean_yolo
-            final_conf = max(yolo_conf, vit_conf)
-            verified = True
-        # Rule B: Potato/Sweet Potato Protection (Eliminate false 'Pear' classification)
-        elif "potato" in clean_yolo.lower() or "potato" in clean_vit.lower():
-            final_label = "Potato" if "sweet" not in clean_yolo.lower() and "sweet" not in clean_vit.lower() else "Sweet Potato"
-            final_conf = max(yolo_conf, vit_conf)
-            verified = True
-        # Rule C: 63-Class Specialist Priority for items outside 36 classes (e.g. Pumpkin, Lemon, Avocado)
-        elif yolo_conf >= 0.35 and clean_yolo.lower() in ["pumpkin", "avocado", "lemon", "lime", "zucchini", "gourd", "mushroom"]:
-            final_label = clean_yolo
-            final_conf = yolo_conf
-            verified = True
-        # Rule D: ViT High Confidence Override if YOLO is uncertain
-        elif vit_conf > 0.70 and vit_conf > yolo_conf:
-            final_label = clean_vit
-            final_conf = vit_conf
+        # If candidate is a Human / Pet detected by COCO
+        if cand.get("is_special"):
+            final_label = cand["clean_label"]
+            final_conf = cand["conf"]
+            category = cand["category"]
+            emoji = cand["emoji"]
+            color = cand["color"]
+            tag_prefix = cand["tag"]
             verified = True
         else:
-            final_label = clean_yolo
-            final_conf = yolo_conf
-            verified = False
+            # Produce candidate: run ViT crop verification
+            bx_w, bx_h = (x2 - x1), (y2 - y1)
+            pad_x, pad_y = int(bx_w * 0.10), int(bx_h * 0.10)
+            crop_box = (
+                max(0, x1 - pad_x),
+                max(0, y1 - pad_y),
+                min(W, x2 + pad_x),
+                min(H, y2 + pad_y)
+            )
+            crop_img = pil_img.crop(crop_box)
 
-        color = BOX_COLORS[idx % len(BOX_COLORS)]
-        category = get_category(final_label)
-        emoji = get_emoji(final_label)
+            vit_label, vit_conf = "Unknown", 0.0
+            try:
+                vit_preds = vit_model(crop_img)
+                if vit_preds:
+                    vit_label = vit_preds[0]["label"].replace("_", " ").title()
+                    vit_conf = float(vit_preds[0]["score"])
+            except Exception:
+                pass
 
-        # 5. Draw Precision Bounding Box on Canvas
+            clean_yolo = clean_label(cand["raw_label"])
+            clean_vit = clean_label(vit_label)
+            yolo_conf = cand["conf"]
+
+            # Smart Consensus Logic:
+            if clean_yolo.lower() == clean_vit.lower() or clean_yolo.lower() in clean_vit.lower():
+                final_label = clean_yolo
+                final_conf = max(yolo_conf, vit_conf)
+                verified = True
+            elif "potato" in clean_yolo.lower() or "potato" in clean_vit.lower():
+                final_label = "Potato" if "sweet" not in clean_yolo.lower() and "sweet" not in clean_vit.lower() else "Sweet Potato"
+                final_conf = max(yolo_conf, vit_conf)
+                verified = True
+            elif yolo_conf >= 0.35 and clean_yolo.lower() in ["pumpkin", "avocado", "lemon", "lime", "zucchini", "gourd", "mushroom"]:
+                final_label = clean_yolo
+                final_conf = yolo_conf
+                verified = True
+            elif vit_conf > 0.70 and vit_conf > yolo_conf:
+                final_label = clean_vit
+                final_conf = vit_conf
+                verified = True
+            else:
+                final_label = clean_yolo
+                final_conf = yolo_conf
+                verified = False
+
+            color = BOX_COLORS[idx % len(BOX_COLORS)]
+            category = get_category(final_label)
+            emoji = get_emoji(final_label)
+            tag_prefix = "FRUIT" if category == "Fruit" else "VEG"
+
+        # Draw Precision Bounding Box on Canvas
         line_w = max(3, int(min(W, H) * 0.005))
         draw.rectangle([x1, y1, x2, y2], outline=color, width=line_w)
 
-        # ASCII-safe badge text (avoids broken emoji '[]' boxes in PIL)
-        tag_prefix = "FRUIT" if category == "Fruit" else "VEG"
+        # ASCII-safe badge (eliminates tofu [] square glyphs on mobile/servers)
         canvas_badge = f" {tag_prefix}: {final_label} {final_conf:.0%} "
 
         if hasattr(font, "getbbox"):
@@ -462,8 +505,8 @@ def detect_and_analyze(
             "conf": final_conf,
             "verified": verified,
             "color": color,
-            "crop": crop_img,
             "box": (x1, y1, x2, y2),
+            "is_special": cand.get("is_special", False),
         })
 
     # Fallback for single full-frame items if YOLO didn't fire
@@ -472,34 +515,34 @@ def detect_and_analyze(
             vit_preds = vit_model(pil_img)
             if vit_preds:
                 top_p = vit_preds[0]
-                lbl = clean_label(top_p["label"])
                 score = float(top_p["score"])
-                cat = get_category(lbl)
-                emoji = get_emoji(lbl)
-                color = BOX_COLORS[0]
+                # Require high confidence (>= 0.65) to eliminate false alarms on non-produce / background scenes
+                if score >= 0.65:
+                    lbl = clean_label(top_p["label"])
+                    cat = get_category(lbl)
+                    emoji = get_emoji(lbl)
+                    color = BOX_COLORS[0]
 
-                # Frame outline
-                pad = 12
-                line_w = max(3, int(min(W, H) * 0.005))
-                draw.rectangle([pad, pad, W - pad, H - pad], outline=color, width=line_w)
-                badge_text = f" {cat.upper()}: {lbl} {score:.0%} "
-                draw.rectangle([pad, pad, pad + len(badge_text) * 10, pad + 28], fill=color)
-                draw.text((pad + 6, pad + 6), badge_text, fill="#FFFFFF", font=font)
+                    pad = 12
+                    line_w = max(3, int(min(W, H) * 0.005))
+                    draw.rectangle([pad, pad, W - pad, H - pad], outline=color, width=line_w)
+                    badge_text = f" {cat.upper()}: {lbl} {score:.0%} "
+                    draw.rectangle([pad, pad, pad + len(badge_text) * 10, pad + 28], fill=color)
+                    draw.text((pad + 6, pad + 6), badge_text, fill="#FFFFFF", font=font)
 
-                detections.append({
-                    "label": lbl,
-                    "category": cat,
-                    "emoji": emoji,
-                    "conf": score,
-                    "verified": True,
-                    "color": color,
-                    "crop": pil_img,
-                    "box": (0, 0, W, H),
-                })
+                    detections.append({
+                        "label": lbl,
+                        "category": cat,
+                        "emoji": emoji,
+                        "conf": score,
+                        "verified": True,
+                        "color": color,
+                        "box": (0, 0, W, H),
+                        "is_special": False,
+                    })
         except Exception:
             pass
 
-    # Build rich UI components
     overview_html = build_overview_dashboard(detections)
     nutrition_html = build_nutrition_dashboard(detections)
     recipes_html = build_recipe_dashboard(detections)
@@ -509,88 +552,103 @@ def detect_and_analyze(
 
 
 # ==============================================================================
-# 🎨 HIGH-PERFORMANCE GLASSMORPHIC UI HTML BUILDERS
+# 📊 UI DASHBOARDS & SPECIAL ENTITY ADVISORIES
 # ==============================================================================
 
 def build_overview_dashboard(detections: List[Dict]) -> str:
     if not detections:
         return """
-        <div style="background: rgba(30, 41, 59, 0.5); border: 1px dashed rgba(148, 163, 184, 0.3); border-radius: 14px; padding: 32px; text-align: center; color: #94A3B8;">
-            <div style="font-size: 2.2em; margin-bottom: 8px;">🔍</div>
-            <div style="font-weight: 700; font-size: 1.1em; color: #F1F5F9;">No Produce Detected</div>
-            <p style="font-size: 0.9em; margin-top: 6px;">Try switching to <b>High Sensitivity Mode</b> or adjust the confidence slider.</p>
+        <div style="background: rgba(30, 41, 59, 0.5); border: 1px dashed rgba(148, 163, 184, 0.3); border-radius: 14px; padding: 28px; text-align: center; color: #94A3B8;">
+            <div style="font-size: 2em; margin-bottom: 6px;">🔍</div>
+            <div style="font-weight: 700; font-size: 1.05em; color: #F1F5F9;">No Objects or Produce Detected</div>
+            <p style="font-size: 0.85em; margin-top: 4px;">Point camera clearly at produce, or use the 🔄 Rotate Camera button if photo is sideways.</p>
         </div>
         """
 
     total_count = len(detections)
     fruit_cnt = sum(1 for d in detections if d["category"] == "Fruit")
     veg_cnt = sum(1 for d in detections if d["category"] == "Vegetable")
-    verified_cnt = sum(1 for d in detections if d["verified"])
-    consensus_pct = int((verified_cnt / max(1, total_count)) * 100)
+    human_cnt = sum(1 for d in detections if d["category"] == "Human")
+    pet_cnt = sum(1 for d in detections if d["category"] == "Pet / Animal")
 
-    # Estimate total calories
-    total_cals = sum(get_nutrition(d["label"])["calories"] for d in detections)
+    # Estimate total calories from produce only
+    total_cals = sum(get_nutrition(d["label"])["calories"] for d in detections if not d.get("is_special"))
 
     html = f"""
     <!-- TOP STAT METRICS BAR -->
-    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px;">
-        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 12px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.72em; text-transform: uppercase; color: #34D399; font-weight: 700; letter-spacing: 0.05em;">Total Produce</div>
-            <div style="font-size: 1.8em; font-weight: 850; color: #FFFFFF; line-height: 1.2;">{total_count}</div>
-            <div style="font-size: 0.72em; color: #94A3B8;">{fruit_cnt} Fruit · {veg_cnt} Veg</div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px;">
+        <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.7em; text-transform: uppercase; color: #34D399; font-weight: 700;">Total Objects</div>
+            <div style="font-size: 1.7em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">{total_count}</div>
+            <div style="font-size: 0.7em; color: #94A3B8;">{fruit_cnt} Fruit · {veg_cnt} Veg</div>
         </div>
 
-        <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(249, 115, 22, 0.08)); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 12px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.72em; text-transform: uppercase; color: #FBBF24; font-weight: 700; letter-spacing: 0.05em;">Est. Calories</div>
-            <div style="font-size: 1.8em; font-weight: 850; color: #FFFFFF; line-height: 1.2;">~{total_cals}</div>
-            <div style="font-size: 0.72em; color: #94A3B8;">kcal total basket</div>
+        <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(249, 115, 22, 0.08)); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.7em; text-transform: uppercase; color: #FBBF24; font-weight: 700;">Est. Calories</div>
+            <div style="font-size: 1.7em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">~{total_cals}</div>
+            <div style="font-size: 0.7em; color: #94A3B8;">kcal produce</div>
         </div>
 
-        <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.08)); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 12px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.72em; text-transform: uppercase; color: #60A5FA; font-weight: 700; letter-spacing: 0.05em;">AI Consensus</div>
-            <div style="font-size: 1.8em; font-weight: 850; color: #FFFFFF; line-height: 1.2;">{consensus_pct}%</div>
-            <div style="font-size: 0.72em; color: #94A3B8;">Dual-Model Verified</div>
+        <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.08)); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.7em; text-transform: uppercase; color: #818CF8; font-weight: 700;">Subjects</div>
+            <div style="font-size: 1.7em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">{human_cnt + pet_cnt}</div>
+            <div style="font-size: 0.7em; color: #94A3B8;">{human_cnt} Human · {pet_cnt} Pet</div>
         </div>
 
-        <div style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(236, 72, 153, 0.08)); border: 1px solid rgba(168, 85, 247, 0.35); border-radius: 12px; padding: 12px; text-align: center;">
-            <div style="font-size: 0.72em; text-transform: uppercase; color: #C084FC; font-weight: 700; letter-spacing: 0.05em;">Model Engine</div>
-            <div style="font-size: 1.2em; font-weight: 800; color: #FFFFFF; margin-top: 4px;">YOLOv8m-63</div>
-            <div style="font-size: 0.72em; color: #94A3B8;">+ ViT-36 Ensemble</div>
+        <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.08)); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.7em; text-transform: uppercase; color: #60A5FA; font-weight: 700;">Engine Mode</div>
+            <div style="font-size: 1.1em; font-weight: 800; color: #FFFFFF; margin-top: 4px;">YOLOv8m + COCO</div>
+            <div style="font-size: 0.7em; color: #94A3B8;">Multi-Entity AI</div>
         </div>
     </div>
+    """
 
-    <!-- DETECTED PRODUCE CARDS -->
-    <div style="font-size: 0.9em; font-weight: 700; color: #CBD5E1; margin: 14px 0 8px 0; text-transform: uppercase; letter-spacing: 0.05em;">
-        📋 Identified Produce Items ({total_count})
+    # Add Pet & Human Detection Notice if detected
+    if human_cnt > 0:
+        html += """
+        <div style="background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 0.85em; color: #C7D2FE;">
+            👤 <b>Human Detected:</b> Recognized person in the frame. Only produce items are included in nutritional tracking.
+        </div>
+        """
+    if pet_cnt > 0:
+        html += """
+        <div style="background: rgba(249, 115, 22, 0.15); border: 1px solid rgba(249, 115, 22, 0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; font-size: 0.85em; color: #FED7AA;">
+            🐾 <b>Pet / Animal Detected:</b> Keep pets safe! Common produce like <b>grapes, raisins, onions, garlic, and avocado</b> are toxic to dogs and cats.
+        </div>
+        """
+
+    html += """
+    <div style="font-size: 0.85em; font-weight: 700; color: #CBD5E1; margin: 10px 0 6px 0; text-transform: uppercase; letter-spacing: 0.05em;">
+        📋 Identified Objects
     </div>
-    <div style="display: flex; flex-direction: column; gap: 8px;">
+    <div style="display: flex; flex-direction: column; gap: 6px;">
     """
 
     for idx, d in enumerate(detections):
         pct = int(d["conf"] * 100)
-        nut = get_nutrition(d["label"])
-        verified_badge = "<span style='background: rgba(16,185,129,0.2); color: #34D399; font-size: 0.72em; padding: 2px 7px; border-radius: 6px; border: 1px solid rgba(16,185,129,0.4); font-weight: 600;'>✓ Dual-Verified</span>" if d["verified"] else "<span style='background: rgba(59,130,246,0.15); color: #60A5FA; font-size: 0.72em; padding: 2px 7px; border-radius: 6px; font-weight: 600;'>⚡ YOLO-63</span>"
+        nut = get_nutrition(d["label"]) if not d.get("is_special") else None
+
+        if d.get("is_special"):
+            sub_text = f"<span style='color: {d['color']}; font-weight: 600;'>{d['category']} Entity</span> · Not a fruit/vegetable"
+            badge = f"<span style='background: rgba(99,102,241,0.2); color: {d['color']}; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>{d['category']}</span>"
+        else:
+            sub_text = f"{nut['calories']} kcal · {nut['carbs']}g Carbs · {nut['protein']}g Protein · <span style='color: #38BDF8;'>{nut['vitamins'].split(',')[0]}</span>"
+            badge = "<span style='background: rgba(16,185,129,0.2); color: #34D399; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>✓ Verified Produce</span>"
 
         html += f"""
-        <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(148, 163, 184, 0.15); border-left: 5px solid {d['color']}; border-radius: 10px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.6em; line-height: 1;">{d['emoji']}</span>
+        <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(148, 163, 184, 0.15); border-left: 5px solid {d['color']}; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.5em; line-height: 1;">{d['emoji']}</span>
                 <div>
                     <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-weight: 750; font-size: 1.05em; color: #FFFFFF;">{d['label']}</span>
-                        <span style="background: rgba(148, 163, 184, 0.15); color: #94A3B8; font-size: 0.72em; padding: 1px 6px; border-radius: 8px;">{d['category']}</span>
-                        {verified_badge}
+                        <span style="font-weight: 750; font-size: 1em; color: #FFFFFF;">{d['label']}</span>
+                        {badge}
                     </div>
-                    <div style="font-size: 0.78em; color: #94A3B8; margin-top: 2px;">
-                        {nut['calories']} kcal · {nut['carbs']}g Carbs · {nut['protein']}g Protein · <span style="color: #38BDF8;">{nut['vitamins'].split(',')[0]}</span>
-                    </div>
+                    <div style="font-size: 0.75em; color: #94A3B8; margin-top: 1px;">{sub_text}</div>
                 </div>
             </div>
-            <div style="text-align: right; min-width: 90px;">
-                <div style="font-weight: 850; font-size: 1.15em; color: {d['color']};">{pct}%</div>
-                <div style="background: rgba(15, 23, 42, 0.7); border-radius: 4px; height: 5px; width: 85px; margin-top: 4px; overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, {d['color']}, #38BDF8); width: {pct}%; height: 100%; border-radius: 4px;"></div>
-                </div>
+            <div style="text-align: right; min-width: 75px;">
+                <div style="font-weight: 850; font-size: 1.1em; color: {d['color']};">{pct}%</div>
             </div>
         </div>
         """
@@ -600,20 +658,20 @@ def build_overview_dashboard(detections: List[Dict]) -> str:
 
 
 def build_nutrition_dashboard(detections: List[Dict]) -> str:
-    if not detections:
-        return "<p style='color: #94A3B8;'>Run produce detection to view comprehensive USDA nutritional sheets.</p>"
+    produce_detections = [d for d in detections if not d.get("is_special")]
+    if not produce_detections:
+        return "<p style='color: #94A3B8;'>No edible produce detected in this image. (Humans and pets are excluded from nutritional analysis).</p>"
 
-    # Deduplicate counts
     summary = {}
-    for d in detections:
+    for d in produce_detections:
         lbl = d["label"]
         summary[lbl] = summary.get(lbl, 0) + 1
 
     html = """
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 12px; padding: 14px;">
-            <div style="font-weight: 750; color: #38BDF8; font-size: 1.05em;">🥗 USDA Reference Nutritional Breakdown (Per 100g Serving)</div>
-            <div style="font-size: 0.82em; color: #94A3B8; margin-top: 2px;">Nutrient values sourced from standard USDA FoodData Central databases.</div>
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 10px; padding: 12px;">
+            <div style="font-weight: 750; color: #38BDF8; font-size: 1em;">🥗 USDA Reference Nutritional Breakdown (Per 100g)</div>
+            <div style="font-size: 0.78em; color: #94A3B8; margin-top: 2px;">Standard values from USDA FoodData Central.</div>
         </div>
     """
 
@@ -623,41 +681,39 @@ def build_nutrition_dashboard(detections: List[Dict]) -> str:
         cat = get_category(lbl)
 
         html += f"""
-        <div style="background: rgba(30, 41, 59, 0.55); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 12px; padding: 14px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <span style="font-size: 1.5em;">{emoji}</span>
-                    <span style="font-size: 1.1em; font-weight: 750; color: #FFFFFF;">{lbl}</span>
-                    <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; font-size: 0.72em; padding: 2px 7px; border-radius: 6px; font-weight: 600;">x{cnt} item{'s' if cnt > 1 else ''}</span>
-                    <span style="color: #64748B; font-size: 0.78em;">· {cat}</span>
+        <div style="background: rgba(30, 41, 59, 0.55); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 10px; padding: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 1.4em;">{emoji}</span>
+                    <span style="font-size: 1.05em; font-weight: 750; color: #FFFFFF;">{lbl}</span>
+                    <span style="background: rgba(56, 189, 248, 0.15); color: #38BDF8; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;">x{cnt}</span>
                 </div>
-                <div style="font-weight: 800; color: #34D399; font-size: 1.15em;">{nut['calories']} kcal</div>
+                <div style="font-weight: 800; color: #34D399; font-size: 1.1em;">{nut['calories']} kcal</div>
             </div>
 
-            <!-- Macronutrient Grid -->
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; text-align: center;">
-                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 6px;">
-                    <div style="color: #94A3B8; font-size: 0.7em; text-transform: uppercase;">Carbs</div>
-                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.9em;">{nut['carbs']}g</div>
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; text-align: center;">
+                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 4px;">
+                    <div style="color: #94A3B8; font-size: 0.68em; text-transform: uppercase;">Carbs</div>
+                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.85em;">{nut['carbs']}g</div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 6px;">
-                    <div style="color: #94A3B8; font-size: 0.7em; text-transform: uppercase;">Protein</div>
-                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.9em;">{nut['protein']}g</div>
+                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 4px;">
+                    <div style="color: #94A3B8; font-size: 0.68em; text-transform: uppercase;">Protein</div>
+                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.85em;">{nut['protein']}g</div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 6px;">
-                    <div style="color: #94A3B8; font-size: 0.7em; text-transform: uppercase;">Fiber</div>
-                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.9em;">{nut['fiber']}g</div>
+                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 4px;">
+                    <div style="color: #94A3B8; font-size: 0.68em; text-transform: uppercase;">Fiber</div>
+                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.85em;">{nut['fiber']}g</div>
                 </div>
-                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 8px; padding: 6px;">
-                    <div style="color: #94A3B8; font-size: 0.7em; text-transform: uppercase;">Sugar</div>
-                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.9em;">{nut['sugar']}g</div>
+                <div style="background: rgba(15, 23, 42, 0.6); border-radius: 6px; padding: 4px;">
+                    <div style="color: #94A3B8; font-size: 0.68em; text-transform: uppercase;">Sugar</div>
+                    <div style="color: #FFFFFF; font-weight: 750; font-size: 0.85em;">{nut['sugar']}g</div>
                 </div>
             </div>
 
-            <div style="font-size: 0.82em; color: #CBD5E1; margin-bottom: 4px;">
+            <div style="font-size: 0.78em; color: #CBD5E1; margin-bottom: 3px;">
                 <b style="color: #38BDF8;">⚡ Micronutrients:</b> {nut['vitamins']}
             </div>
-            <div style="font-size: 0.82em; color: #94A3B8;">
+            <div style="font-size: 0.78em; color: #94A3B8;">
                 <b style="color: #34D399;">💡 Key Benefit:</b> {nut['benefits']}
             </div>
         </div>
@@ -668,10 +724,11 @@ def build_nutrition_dashboard(detections: List[Dict]) -> str:
 
 
 def build_recipe_dashboard(detections: List[Dict]) -> str:
-    if not detections:
-        return "<p style='color: #94A3B8;'>Upload produce to generate tailored culinary recipe concepts.</p>"
+    produce = [d for d in detections if not d.get("is_special")]
+    if not produce:
+        return "<p style='color: #94A3B8;'>Upload produce to generate healthy chef recipe ideas.</p>"
 
-    unique_labels = list({d["label"] for d in detections})
+    unique_labels = list({d["label"] for d in produce})
     recipes = []
     for lbl in unique_labels:
         nut = get_nutrition(lbl)
@@ -679,22 +736,22 @@ def build_recipe_dashboard(detections: List[Dict]) -> str:
             recipes.append((r, lbl))
 
     html = """
-    <div style="display: flex; flex-direction: column; gap: 10px;">
-        <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(16, 185, 129, 0.12)); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 12px; padding: 12px;">
-            <div style="font-weight: 750; color: #38BDF8; font-size: 1.05em;">👨‍🍳 Smart Pantry Chef Recommendations</div>
-            <div style="font-size: 0.8em; color: #94A3B8; margin-top: 2px;">Dishes customized from the produce identified in your photo:</div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.12), rgba(16, 185, 129, 0.12)); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 10px; padding: 10px;">
+            <div style="font-weight: 750; color: #38BDF8; font-size: 0.98em;">👨‍🍳 Smart Pantry Chef Recommendations</div>
+            <div style="font-size: 0.75em; color: #94A3B8; margin-top: 1px;">Dishes customized from the produce identified in your photo:</div>
         </div>
     """
 
-    for r_title, ing in recipes[:6]:
+    for r_title, ing in recipes[:5]:
         emo = get_emoji(ing)
         html += f"""
-        <div style="background: rgba(30, 41, 59, 0.55); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 10px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="background: rgba(30, 41, 59, 0.55); border: 1px solid rgba(148, 163, 184, 0.15); border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center;">
             <div>
-                <div style="font-weight: 750; color: #FFFFFF; font-size: 0.95em;">🍽️ {r_title}</div>
-                <div style="font-size: 0.78em; color: #94A3B8; margin-top: 2px;">Key Ingredient: {emo} <b>{ing}</b></div>
+                <div style="font-weight: 750; color: #FFFFFF; font-size: 0.92em;">🍽️ {r_title}</div>
+                <div style="font-size: 0.75em; color: #94A3B8; margin-top: 1px;">Key Ingredient: {emo} <b>{ing}</b></div>
             </div>
-            <span style="background: rgba(16, 185, 129, 0.15); color: #34D399; font-size: 0.72em; padding: 3px 8px; border-radius: 12px; font-weight: 600;">Healthy</span>
+            <span style="background: rgba(16, 185, 129, 0.15); color: #34D399; font-size: 0.7em; padding: 2px 7px; border-radius: 10px; font-weight: 600;">Healthy</span>
         </div>
         """
 
@@ -711,7 +768,7 @@ def build_checklist_text(detections: List[Dict]) -> str:
         lbl = d["label"]
         counts[lbl] = counts.get(lbl, 0) + 1
 
-    lines = ["🛒 PRODUCE INVENTORY & CHECKLIST:", "─────────────────────────────────"]
+    lines = ["🛒 INVENTORY & PRODUCE CHECKLIST:", "─────────────────────────────────"]
     for lbl, count in sorted(counts.items()):
         emo = get_emoji(lbl)
         cat = get_category(lbl)
@@ -723,11 +780,11 @@ def build_checklist_text(detections: List[Dict]) -> str:
 
 
 # ==============================================================================
-# 🎨 GRADIO INTERFACE ARCHITECTURE
+# 🎨 MOBILE-OPTIMIZED RESPONSIVE GRADIO INTERFACE
 # ==============================================================================
 
 CUSTOM_CSS = """
-/* ProduceVision Studio Pro Ultra-Modern Dark Glassmorphism */
+/* Responsive Mobile-First ProduceVision Studio Pro */
 body, .gradio-container {
     max-width: 1400px !important;
     margin: 0 auto !important;
@@ -737,12 +794,12 @@ body, .gradio-container {
 
 #header-hero {
     text-align: center;
-    padding: 20px 0 14px 0;
-    margin-bottom: 8px;
+    padding: 16px 0 10px 0;
+    margin-bottom: 6px;
 }
 
 #header-title {
-    font-size: 2.6em;
+    font-size: 2.4em;
     font-weight: 900;
     background: linear-gradient(135deg, #34D399 0%, #38BDF8 50%, #A78BFA 100%);
     -webkit-background-clip: text;
@@ -753,10 +810,10 @@ body, .gradio-container {
 
 #header-subtitle {
     color: #94A3B8;
-    font-size: 1.02em;
+    font-size: 0.98em;
     max-width: 720px;
-    margin: 0 auto 10px auto;
-    line-height: 1.45;
+    margin: 0 auto 8px auto;
+    line-height: 1.4;
 }
 
 .engine-pill {
@@ -766,9 +823,9 @@ body, .gradio-container {
     background: rgba(16, 185, 129, 0.12);
     border: 1px solid rgba(16, 185, 129, 0.35);
     color: #34D399;
-    padding: 4px 16px;
+    padding: 4px 14px;
     border-radius: 99px;
-    font-size: 0.82em;
+    font-size: 0.8em;
     font-weight: 600;
 }
 
@@ -776,30 +833,50 @@ body, .gradio-container {
     background: linear-gradient(135deg, #10B981 0%, #06B6D4 100%) !important;
     color: #FFFFFF !important;
     font-weight: 800 !important;
-    font-size: 1.1em !important;
+    font-size: 1.05em !important;
     border: none !important;
     border-radius: 12px !important;
-    box-shadow: 0 4px 18px rgba(16, 185, 129, 0.4) !important;
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4) !important;
     transition: all 0.2s ease !important;
-    margin-top: 10px !important;
+    margin-top: 8px !important;
 }
 
 .analyze-btn:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.6) !important;
+    box-shadow: 0 6px 22px rgba(16, 185, 129, 0.6) !important;
 }
 
-.panel-card {
-    background: rgba(30, 41, 59, 0.5) !important;
-    border: 1px solid rgba(148, 163, 184, 0.15) !important;
-    border-radius: 14px !important;
+.rotate-btn {
+    background: rgba(30, 41, 59, 0.8) !important;
+    color: #CBD5E1 !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    font-size: 0.88em !important;
+    border-radius: 8px !important;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .gradio-container {
+        padding: 6px !important;
+    }
+    #header-title {
+        font-size: 1.8em !important;
+    }
+    #header-subtitle {
+        font-size: 0.88em !important;
+    }
+    .analyze-btn {
+        width: 100% !important;
+        padding: 12px !important;
+        font-size: 1.1em !important;
+    }
 }
 
 footer { display: none !important; }
 """
 
 with gr.Blocks(
-    title="🥝 ProduceVision Studio Pro — Fruit & Vegetable AI",
+    title="🥝 ProduceVision Studio Pro — Mobile-Ready Produce & Subject AI",
     css=CUSTOM_CSS,
     theme=gr.themes.Soft(primary_hue="emerald", secondary_hue="teal", neutral_hue="slate"),
 ) as demo:
@@ -808,27 +885,37 @@ with gr.Blocks(
     <div id="header-hero">
         <div id="header-title">🥝 ProduceVision Studio Pro</div>
         <div id="header-subtitle">
-            Enterprise produce intelligence: 63-class YOLOv8 Medium localization, ViT-36 consensus verification, and real-time USDA nutritional analytics.
+            Enterprise computer vision: 63-class produce localization, ViT consensus verification, and automated Human & Pet detection.
         </div>
         <div class="engine-pill">
             <span style="color: #10B981;">●</span>
-            <span>63-Class YOLOv8m Produce Specialist</span>
+            <span>63-Class Produce Model</span>
             <span>·</span>
-            <span>ViT-36 Consensus Engine</span>
+            <span>👤 Human & 🐾 Pet Aware</span>
             <span>·</span>
-            <span>Zero Tofu Glyphs</span>
+            <span>📱 Mobile & Rotation Compatible</span>
         </div>
     </div>
     """)
 
     with gr.Row():
-        # LEFT COLUMN: INPUT & TUNING
+        # LEFT COLUMN: INPUT, CAMERA CONTROLS & TUNING
         with gr.Column(scale=5):
             input_img = gr.Image(
-                label="📤 Input Produce Image / Live Camera",
+                label="📤 Photo / Mobile Camera / Clipboard",
                 type="numpy",
                 sources=["upload", "webcam", "clipboard"],
-                height=360,
+                height=350,
+            )
+
+            # MOBILE CAMERA CONTROLS (ROTATION & FLIP)
+            with gr.Row():
+                rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["rotate-btn"], size="sm")
+                flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["rotate-btn"], size="sm")
+
+            live_toggle = gr.Checkbox(
+                label="⚡ Live Auto-Detect (instantly analyze camera snapshots & new uploads)",
+                value=True,
             )
 
             with gr.Accordion("⚙️ Precision Sensitivity & Detection Preset", open=False):
@@ -839,7 +926,7 @@ with gr.Blocks(
                     ],
                     value="🎯 Consensus Mode (Ultra-Precision)",
                     label="Detection Preset",
-                    info="Consensus Mode eliminates false positives; High Sensitivity catches small items.",
+                    info="Consensus Mode eliminates false alarms; High Sensitivity catches smaller items.",
                 )
                 with gr.Row():
                     conf_slider = gr.Slider(
@@ -853,7 +940,7 @@ with gr.Blocks(
                         label="IoU NMS Overlap",
                         minimum=0.10,
                         maximum=0.80,
-                        value=0.45,
+                        value=0.40,
                         step=0.05,
                     )
 
@@ -862,24 +949,24 @@ with gr.Blocks(
             # 1-CLICK DEMO EXAMPLES
             gr.Markdown("### 🌟 Instant 1-Click Test Showcase")
             demo_samples = [
-                ["samples/potatoes.jpg", 0.30, 0.45, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/fruit_basket.jpg", 0.30, 0.45, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/bell_peppers.jpg", 0.30, 0.45, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/tomatoes.jpg", 0.30, 0.45, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/carrots.jpg", 0.30, 0.45, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/banana.jpg", 0.30, 0.45, "🎯 Consensus Mode (Ultra-Precision)"],
+                ["samples/potatoes.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
+                ["samples/fruit_basket.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
+                ["samples/bell_peppers.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
+                ["samples/tomatoes.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
+                ["samples/carrots.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
+                ["samples/banana.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
             ]
             gr.Examples(
                 examples=demo_samples,
                 inputs=[input_img, conf_slider, iou_slider, preset_mode],
-                label="Click any card below to test immediately:",
+                label="Click any sample card below to test immediately:",
             )
 
         # RIGHT COLUMN: ANNOTATED CANVAS & DETAILED INTELLIGENCE
         with gr.Column(scale=7):
             annotated_canvas = gr.Image(
                 label="🎯 Precision Detection Map",
-                height=360,
+                height=350,
                 interactive=False,
             )
 
@@ -893,9 +980,23 @@ with gr.Blocks(
 
                 with gr.TabItem("👨‍🍳 Chef & Pantry Checklist"):
                     recipes_html = gr.HTML()
-                    checklist_txt = gr.Textbox(label="Exportable Inventory Checklist", lines=6, interactive=False)
+                    checklist_txt = gr.Textbox(label="Exportable Inventory Checklist", lines=5, interactive=False)
 
-    # EVENT TRIGGER
+    def on_image_change(img, conf, iou, m, live):
+        if not live or img is None:
+            return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
+        return detect_and_analyze(img, conf, iou, m)
+
+    # EVENT TRIGGERS
+    input_img.change(
+        fn=on_image_change,
+        inputs=[input_img, conf_slider, iou_slider, preset_mode, live_toggle],
+        outputs=[annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    )
+
+    rotate_btn.click(fn=rotate_image_90, inputs=input_img, outputs=input_img)
+    flip_btn.click(fn=flip_image_horizontal, inputs=input_img, outputs=input_img)
+
     analyze_btn.click(
         fn=detect_and_analyze,
         inputs=[input_img, conf_slider, iou_slider, preset_mode],
@@ -904,7 +1005,7 @@ with gr.Blocks(
 
     gr.HTML("""
     <div style="text-align: center; color: #475569; font-size: 0.82em; margin-top: 20px; padding: 10px; border-top: 1px solid rgba(148, 163, 184, 0.1);">
-        ProduceVision Studio Pro · 63 Produce Classes · USDA Integrated Database · High Precision Computer Vision
+        ProduceVision Studio Pro · 63 Produce Classes + Human & Pet Recognition · Mobile Responsive · USDA Integrated Database
     </div>
     """)
 
