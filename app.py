@@ -233,19 +233,32 @@ def get_models():
 # 🛠️ HELPER FUNCTIONS (ROTATION, FLIP, DEDUPLICATION)
 # ==============================================================================
 
-def rotate_image_90(image: Optional[np.ndarray]) -> Optional[np.ndarray]:
-    """Rotate image 90 degrees clockwise for mobile devices."""
+def safe_to_pil(image) -> Optional[Image.Image]:
+    """Safely convert any Gradio image format (numpy, dict, PIL) into a clean RGB PIL Image."""
     if image is None:
         return None
-    pil_img = Image.fromarray(image).rotate(-90, expand=True)
-    return np.array(pil_img)
+    if isinstance(image, dict):
+        image = image.get("image") or image.get("composite") or list(image.values())[0]
+    if isinstance(image, Image.Image):
+        return image.convert("RGB")
+    try:
+        return Image.fromarray(np.uint8(image)).convert("RGB")
+    except Exception:
+        return None
 
-def flip_image_horizontal(image: Optional[np.ndarray]) -> Optional[np.ndarray]:
-    """Mirror/Flip image horizontally (for front-facing selfie cameras)."""
-    if image is None:
+def rotate_image_90(image) -> Optional[np.ndarray]:
+    """Rotate image 90 degrees clockwise for mobile devices."""
+    pil_img = safe_to_pil(image)
+    if pil_img is None:
         return None
-    pil_img = Image.fromarray(image).transpose(Image.FLIP_LEFT_RIGHT)
-    return np.array(pil_img)
+    return np.array(pil_img.rotate(-90, expand=True))
+
+def flip_image_horizontal(image) -> Optional[np.ndarray]:
+    """Mirror/Flip image horizontally (for front-facing selfie cameras)."""
+    pil_img = safe_to_pil(image)
+    if pil_img is None:
+        return None
+    return np.array(pil_img.transpose(Image.FLIP_LEFT_RIGHT))
 
 def clean_label(raw: str) -> str:
     """Normalize complex raw dataset names into clean friendly names."""
@@ -351,16 +364,16 @@ def filter_overlapping_boxes(boxes_data: List[Dict], iou_threshold: float = 0.35
 # ==============================================================================
 
 def detect_and_analyze(
-    image: Optional[np.ndarray],
+    image,
     conf_thresh: float = 0.30,
     iou_thresh: float = 0.40,
     mode: str = "🎯 Consensus Mode (Ultra-Precision)",
 ):
-    if image is None:
-        return None, "<div class='empty-state'>⚠️ Please upload an image, take a mobile photo, or select a demo sample to begin analysis.</div>", "", "", ""
+    pil_img = safe_to_pil(image)
+    if pil_img is None:
+        return None, "<div class='empty-state'>⚠️ Please snap a live camera photo, upload an image, or select a demo sample to begin analysis.</div>", "", "", ""
 
     yolo_produce, yolo_coco, vit_model = get_models()
-    pil_img = Image.fromarray(image).convert("RGB")
     W, H = pil_img.size
 
     eff_conf = conf_thresh
@@ -549,6 +562,26 @@ def detect_and_analyze(
     checklist_text = build_checklist_text(detections)
 
     return np.array(draw_img), overview_html, nutrition_html, recipes_html, checklist_text
+
+def rotate_and_detect(image, conf_thresh, iou_thresh, mode):
+    if image is None:
+        msg = "<div style='background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 12px; color: #FCA5A5; font-size: 0.9em; text-align: center;'>⚠️ No image captured yet. Snap a photo with the live camera or upload an image first.</div>"
+        return None, None, msg, "", "", ""
+    rot_np = rotate_image_90(image)
+    if rot_np is None:
+        return None, None, "<div class='empty-state'>⚠️ Could not rotate image.</div>", "", "", ""
+    canvas, ov, nut, rec, chk = detect_and_analyze(rot_np, conf_thresh, iou_thresh, mode)
+    return rot_np, canvas, ov, nut, rec, chk
+
+def flip_and_detect(image, conf_thresh, iou_thresh, mode):
+    if image is None:
+        msg = "<div style='background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 12px; color: #FCA5A5; font-size: 0.9em; text-align: center;'>⚠️ No image captured yet. Snap a photo with the live camera or upload an image first.</div>"
+        return None, None, msg, "", "", ""
+    flip_np = flip_image_horizontal(image)
+    if flip_np is None:
+        return None, None, "<div class='empty-state'>⚠️ Could not flip image.</div>", "", "", ""
+    canvas, ov, nut, rec, chk = detect_and_analyze(flip_np, conf_thresh, iou_thresh, mode)
+    return flip_np, canvas, ov, nut, rec, chk
 
 
 # ==============================================================================
@@ -990,24 +1023,45 @@ with gr.Blocks(
     """)
 
     with gr.Row(elem_id="main-app-row"):
-        # LEFT COLUMN: INPUT, CAMERA CONTROLS & TUNING
+        # LEFT COLUMN: INPUT (LIVE CAMERA & UPLOAD TABS), TUNING & PRESETS
         with gr.Column(scale=5, elem_id="input-col"):
-            input_img = gr.Image(
-                label="📤 Photo / Camera / Clipboard",
-                type="numpy",
-                sources=["upload", "webcam", "clipboard"],
-                height=320,
-            )
 
-            # MOBILE CAMERA CONTROLS (ROTATION & FLIP)
-            with gr.Row(elem_id="camera-ctrl-row"):
-                rotate_btn = gr.Button("🔄 Rotate 90°", elem_classes=["cam-btn"], size="sm")
-                flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
+            with gr.Tabs(elem_id="input-mode-tabs"):
+                # TAB 1: LIVE CAMERA (CLICK PIC & CLASSIFY)
+                with gr.TabItem("📸 Live Camera (Click & Classify)", id="tab-cam"):
+                    cam_input = gr.Image(
+                        label="📸 Live Camera Viewfinder",
+                        type="numpy",
+                        sources=["webcam"],
+                        height=290,
+                    )
 
-            live_toggle = gr.Checkbox(
-                label="⚡ Live Auto-Detect (instantly analyze camera snapshots & new uploads)",
-                value=True,
-            )
+                    cam_snap_btn = gr.Button("📸 Click Pic & Classify Now", elem_classes=["analyze-btn"], size="lg")
+
+                    with gr.Row(elem_id="camera-ctrl-row"):
+                        cam_rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["cam-btn"], size="sm")
+                        cam_flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
+
+                    gr.HTML("""
+                    <div style="font-size: 0.76em; color: #94A3B8; text-align: center; margin-top: 2px;">
+                        💡 <b>Tip:</b> Click <b>Click Pic & Classify</b> to analyze the live camera snapshot immediately! If photo is sideways on mobile, tap <b>Rotate 90°</b>.
+                    </div>
+                    """)
+
+                # TAB 2: UPLOAD PHOTO & SAMPLES
+                with gr.TabItem("📁 Upload Photo / Samples", id="tab-upload"):
+                    file_input = gr.Image(
+                        label="📤 Upload Produce Image / Clipboard",
+                        type="numpy",
+                        sources=["upload", "clipboard"],
+                        height=290,
+                    )
+
+                    file_analyze_btn = gr.Button("🔍 Analyze Uploaded Produce", elem_classes=["analyze-btn"], size="lg")
+
+                    with gr.Row(elem_id="camera-ctrl-row"):
+                        file_rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["cam-btn"], size="sm")
+                        file_flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
 
             with gr.Accordion("⚙️ Precision Sensitivity & Detection Preset", open=False):
                 preset_mode = gr.Radio(
@@ -1035,8 +1089,6 @@ with gr.Blocks(
                         step=0.05,
                     )
 
-            analyze_btn = gr.Button("🔍 Analyze Produce with AI", elem_classes=["analyze-btn"], size="lg")
-
             # 1-CLICK DEMO EXAMPLES
             gr.Markdown("### 🌟 Instant 1-Click Test Showcase")
             demo_samples = [
@@ -1049,7 +1101,7 @@ with gr.Blocks(
             ]
             gr.Examples(
                 examples=demo_samples,
-                inputs=[input_img, conf_slider, iou_slider, preset_mode],
+                inputs=[file_input, conf_slider, iou_slider, preset_mode],
                 label="Click any sample card below to test immediately:",
             )
 
@@ -1073,25 +1125,56 @@ with gr.Blocks(
                     recipes_html = gr.HTML()
                     checklist_txt = gr.Textbox(label="Exportable Inventory Checklist", lines=5, interactive=False)
 
-    def on_image_change(img, conf, iou, m, live):
-        if not live or img is None:
+    # EVENT TRIGGERS WIRING
+    analysis_outputs = [annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt]
+
+    def on_auto_detect(img, conf, iou, m):
+        if img is None:
             return gr.skip(), gr.skip(), gr.skip(), gr.skip(), gr.skip()
         return detect_and_analyze(img, conf, iou, m)
 
-    # EVENT TRIGGERS
-    input_img.change(
-        fn=on_image_change,
-        inputs=[input_img, conf_slider, iou_slider, preset_mode, live_toggle],
-        outputs=[annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    # 1. Live Camera Actions
+    cam_snap_btn.click(
+        fn=detect_and_analyze,
+        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        outputs=analysis_outputs,
+    )
+    cam_rotate_btn.click(
+        fn=rotate_and_detect,
+        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        outputs=[cam_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    )
+    cam_flip_btn.click(
+        fn=flip_and_detect,
+        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        outputs=[cam_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    )
+    cam_input.change(
+        fn=on_auto_detect,
+        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        outputs=analysis_outputs,
     )
 
-    rotate_btn.click(fn=rotate_image_90, inputs=input_img, outputs=input_img)
-    flip_btn.click(fn=flip_image_horizontal, inputs=input_img, outputs=input_img)
-
-    analyze_btn.click(
+    # 2. Upload / File Actions
+    file_analyze_btn.click(
         fn=detect_and_analyze,
-        inputs=[input_img, conf_slider, iou_slider, preset_mode],
-        outputs=[annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        inputs=[file_input, conf_slider, iou_slider, preset_mode],
+        outputs=analysis_outputs,
+    )
+    file_rotate_btn.click(
+        fn=rotate_and_detect,
+        inputs=[file_input, conf_slider, iou_slider, preset_mode],
+        outputs=[file_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    )
+    file_flip_btn.click(
+        fn=flip_and_detect,
+        inputs=[file_input, conf_slider, iou_slider, preset_mode],
+        outputs=[file_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    )
+    file_input.change(
+        fn=on_auto_detect,
+        inputs=[file_input, conf_slider, iou_slider, preset_mode],
+        outputs=analysis_outputs,
     )
 
     gr.HTML("""
