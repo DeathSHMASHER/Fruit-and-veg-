@@ -39,15 +39,22 @@ ProduceVision Studio Pro is engineered from the ground up for smartphone browser
    - Dynamic viewport sizing with zero horizontal overflow.
    - Stacks controls, live viewfinder, bounding box canvases, and nutrition dashboards into a clean, mobile-first touch layout.
 
-2. **🔄 90° Clockwise Camera Rotation**:
-   - Mobile camera sensors frequently record images rotated 90° sideways when transitioning between portrait and landscape modes.
-   - With a single tap on the **`🔄 Rotate 90° Clockwise`** button, images rotate cleanly and re-align bounding boxes without degrading quality.
+2. **🟢 Prominent Green Camera Privacy Indicator**:
+   - Pinned to the top-right corner of the screen, featuring a pulsing emerald green aura and `📷 CAMERA ACTIVE` badge.
+   - Designed **70% larger than standard mobile OS privacy dots** for immediate, unmistakable user visibility.
+   - Automatically illuminates when the camera is streaming and turns off when the camera stream is halted.
 
-3. **↔️ Horizontal Mirror / Flip**:
-   - Front-facing mobile cameras mirror the selfie perspective. The **`↔️ Mirror / Flip`** button instantly corrects camera inversion.
+3. **🔴 Camera Power Toggle (`Turn Camera OFF / ON`)**:
+   - Hardware-level stream control: tapping **`🔴 Turn Camera OFF`** physically halts camera tracks (`track.stop()`) and frees device hardware, guaranteeing zero data capture.
+   - Tapping **`🟢 Turn Camera ON`** re-initializes the live viewfinder instantly.
 
-4. **⚡ Live Auto-Detect**:
-   - Snap a photo directly via the smartphone camera or webcam — the system instantly runs detection and renders bounding boxes without requiring secondary button presses.
+4. **🔄 Zero-Reload 90° Clockwise Rotation & ↔️ Mirror/Flip**:
+   - Live hardware video feed rotates and mirrors smoothly via hardware-accelerated CSS transforms.
+   - Eliminates page reloading, stream dropouts, and loading spinners.
+   - Captures frames with exact user-configured orientation and mirroring directly into the AI classification pipeline.
+
+5. **⚡ Instant Frame Snap & Classify**:
+   - Tapping **`📸 Click Pic & Classify Now`** fires an authentic camera shutter animation and transfers native resolution frames to the dual-engine AI pipeline with zero lag.
    - Works seamlessly with uploaded images, camera snapshots, or clipboard pastes.
 
 ---
