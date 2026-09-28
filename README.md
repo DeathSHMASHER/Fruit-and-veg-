@@ -2,7 +2,7 @@
 title: FruitnVeg
 emoji: 🥝
 colorFrom: green
-colorTo: emerald
+colorTo: blue
 sdk: gradio
 sdk_version: 6.8.0
 app_file: app.py
