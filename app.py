@@ -583,36 +583,60 @@ def detect_and_analyze(
 
     return np.array(draw_img), overview_html, nutrition_html, recipes_html, checklist_text
 
-def cam_snap_and_detect(b64_str, conf_thresh, iou_thresh, mode):
-    if not b64_str or not b64_str.strip():
-        msg = "<div style='background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; padding: 12px; color: #FCA5A5; font-size: 0.9em; text-align: center;'>⚠️ Camera is not active or hasn't captured a frame yet. Please make sure the camera is ON!</div>"
-        return "", None, msg, "", "", ""
-    canvas, ov, nut, rec, chk = detect_and_analyze(b64_str, conf_thresh, iou_thresh, mode)
-    return b64_str, canvas, ov, nut, rec, chk
+def toggle_camera_power(is_active):
+    """Toggle camera hardware state. When False, destroys media tracks to halt video stream."""
+    if is_active:
+        # Currently ON -> Turn OFF
+        return (
+            False,
+            gr.update(visible=False),
+            gr.update(visible=True),
+            gr.update(value="🟢 Turn Camera ON", elem_classes=["power-btn-on"]),
+            gr.update(visible=False),
+        )
+    else:
+        # Currently OFF -> Turn ON
+        return (
+            True,
+            gr.update(visible=True),
+            gr.update(visible=False),
+            gr.update(value="🔴 Turn Camera OFF", elem_classes=["power-btn"]),
+            gr.update(visible=True),
+        )
 
-def rotate_cam_and_detect(b64_str, conf_thresh, iou_thresh, mode):
-    if not b64_str or not b64_str.strip():
-        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; padding: 10px; color: #7DD3FC; font-size: 0.85em; text-align: center;'>🔄 Live camera rotated! Tap '📸 Click Pic & Classify Now' to capture and analyze.</div>"
-        return "", None, msg, "", "", ""
-    pil_img = safe_to_pil(b64_str)
-    if pil_img is None:
-        return "", None, "<div class='empty-state'>⚠️ Invalid image.</div>", "", "", ""
-    rot_pil = pil_img.rotate(-90, expand=True)
-    rot_b64 = pil_to_data_uri(rot_pil)
-    canvas, ov, nut, rec, chk = detect_and_analyze(rot_pil, conf_thresh, iou_thresh, mode)
-    return rot_b64, canvas, ov, nut, rec, chk
+def on_cam_snap_and_detect(photo, conf_thresh, iou_thresh, mode):
+    """Classify live camera snapshot. If not taken yet, instruct user."""
+    if photo is None:
+        msg = """
+        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 18px; text-align: center; color: #FCD34D;">
+            <div style="font-size: 2.2em; margin-bottom: 6px;">📸</div>
+            <div style="font-weight: 800; font-size: 1.1em; color: #FDE68A;">No Photo Snapped Yet</div>
+            <p style="font-size: 0.88em; margin-top: 6px; color: #CBD5E1;">
+                Tap the <b>white camera shutter circle ⚪</b> inside the camera viewfinder to capture a live photo, then tap <b>📸 Click Pic & Classify Now</b>!
+            </p>
+        </div>
+        """
+        return None, None, msg, "", "", ""
+    canvas, ov, nut, rec, chk = detect_and_analyze(photo, conf_thresh, iou_thresh, mode)
+    return photo, canvas, ov, nut, rec, chk
 
-def flip_cam_and_detect(b64_str, conf_thresh, iou_thresh, mode):
-    if not b64_str or not b64_str.strip():
-        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 8px; padding: 10px; color: #7DD3FC; font-size: 0.85em; text-align: center;'>↔️ Live camera mirrored! Tap '📸 Click Pic & Classify Now' to capture and analyze.</div>"
-        return "", None, msg, "", "", ""
-    pil_img = safe_to_pil(b64_str)
-    if pil_img is None:
-        return "", None, "<div class='empty-state'>⚠️ Invalid image.</div>", "", "", ""
-    flip_pil = pil_img.transpose(Image.FLIP_LEFT_RIGHT)
-    flip_b64 = pil_to_data_uri(flip_pil)
-    canvas, ov, nut, rec, chk = detect_and_analyze(flip_pil, conf_thresh, iou_thresh, mode)
-    return flip_b64, canvas, ov, nut, rec, chk
+def on_cam_rotate(current_photo, conf_thresh, iou_thresh, mode):
+    """Rotate camera snapshot 90 degrees clockwise without re-mounting webcam."""
+    if current_photo is None:
+        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 14px; text-align: center; color: #7DD3FC;'>🔄 Please snap a photo using the camera shutter button first before rotating.</div>"
+        return None, None, msg, "", "", ""
+    rot_np = rotate_image_90(current_photo)
+    canvas, ov, nut, rec, chk = detect_and_analyze(rot_np, conf_thresh, iou_thresh, mode)
+    return rot_np, canvas, ov, nut, rec, chk
+
+def on_cam_flip(current_photo, conf_thresh, iou_thresh, mode):
+    """Mirror/Flip camera snapshot horizontally without re-mounting webcam."""
+    if current_photo is None:
+        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 14px; text-align: center; color: #7DD3FC;'>↔️ Please snap a photo using the camera shutter button first before mirroring.</div>"
+        return None, None, msg, "", "", ""
+    flip_np = flip_image_horizontal(current_photo)
+    canvas, ov, nut, rec, chk = detect_and_analyze(flip_np, conf_thresh, iou_thresh, mode)
+    return flip_np, canvas, ov, nut, rec, chk
 
 def rotate_file_and_detect(image, conf_thresh, iou_thresh, mode):
     if image is None:
@@ -1054,7 +1078,7 @@ html, body, .gradio-container {
     top: 16px !important;
     right: 18px !important;
     z-index: 9999999 !important;
-    display: none;
+    display: flex !important;
     align-items: center !important;
     gap: 8px !important;
     background: rgba(5, 46, 22, 0.95) !important;
@@ -1093,6 +1117,23 @@ html, body, .gradio-container {
 
 .power-btn {
     background: rgba(30, 41, 59, 0.95) !important;
+    color: #F87171 !important;
+    border: 1px solid rgba(239, 68, 68, 0.4) !important;
+    font-size: 0.88em !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    padding: 8px 12px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+
+.power-btn:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: #EF4444 !important;
+}
+
+.power-btn-on {
+    background: rgba(30, 41, 59, 0.95) !important;
     color: #34D399 !important;
     border: 1px solid rgba(16, 185, 129, 0.4) !important;
     font-size: 0.88em !important;
@@ -1103,7 +1144,7 @@ html, body, .gradio-container {
     transition: all 0.2s ease !important;
 }
 
-.power-btn:hover {
+.power-btn-on:hover {
     background: rgba(16, 185, 129, 0.2) !important;
     border-color: #10B981 !important;
 }
@@ -1133,145 +1174,21 @@ with gr.Blocks(
     </div>
     """)
 
-    # HTML5 PRIVACY CAMERA LIGHT & JAVASCRIPT ENGINE
-    gr.HTML("""
-    <!-- PRIVACY CAMERA ACTIVE BADGE (Fixed Top Right, 70% larger than typical smartphone dots) -->
-    <div id="privacy-indicator">
-        <span id="privacy-green-dot"></span>
-        <span>📷 CAMERA ACTIVE</span>
-    </div>
+    # 🟢 PRIVACY CAMERA ACTIVE BADGE (Fixed Top Right, 70% larger than typical smartphone dots)
+    privacy_badge = gr.HTML(
+        """
+        <div id="privacy-indicator">
+            <span id="privacy-green-dot"></span>
+            <span style="font-size: 1.25em; line-height: 1;">📷</span>
+            <span>CAMERA ACTIVE</span>
+        </div>
+        """,
+        visible=True,
+    )
 
-    <script>
-    window.pvStream = null;
-    window.pvRotation = 0;
-    window.pvFlipped = false;
-
-    window.pvStartCamera = async function() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
-            });
-            window.pvStream = stream;
-            const video = document.getElementById('live-camera-video');
-            const overlay = document.getElementById('camera-off-overlay');
-            const indicator = document.getElementById('privacy-indicator');
-            const powerBtn = document.getElementById('cam-power-btn');
-
-            if (video) {
-                video.srcObject = stream;
-                video.style.display = 'block';
-                video.play();
-            }
-            if (overlay) overlay.style.display = 'none';
-            if (indicator) indicator.style.display = 'flex';
-            if (powerBtn) {
-                powerBtn.innerText = '🔴 Turn Camera OFF';
-                powerBtn.style.color = '#FCA5A5';
-                powerBtn.style.borderColor = 'rgba(239, 68, 68, 0.5)';
-            }
-        } catch (err) {
-            console.error('Camera access error:', err);
-        }
-    };
-
-    window.pvStopCamera = function() {
-        if (window.pvStream) {
-            window.pvStream.getTracks().forEach(track => track.stop());
-            window.pvStream = null;
-        }
-        const video = document.getElementById('live-camera-video');
-        const overlay = document.getElementById('camera-off-overlay');
-        const indicator = document.getElementById('privacy-indicator');
-        const powerBtn = document.getElementById('cam-power-btn');
-
-        if (video) {
-            video.srcObject = null;
-            video.style.display = 'none';
-        }
-        if (overlay) overlay.style.display = 'flex';
-        if (indicator) indicator.style.display = 'none';
-        if (powerBtn) {
-            powerBtn.innerText = '🟢 Turn Camera ON';
-            powerBtn.style.color = '#34D399';
-            powerBtn.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-        }
-    };
-
-    window.pvToggleCamera = function() {
-        if (window.pvStream) {
-            window.pvStopCamera();
-        } else {
-            window.pvStartCamera();
-        }
-        return '';
-    };
-
-    window.pvUpdateVideoTransform = function() {
-        const video = document.getElementById('live-camera-video');
-        if (!video) return;
-        const flip = window.pvFlipped ? 'scaleX(-1)' : 'scaleX(1)';
-        video.style.transform = `rotate(${window.pvRotation}deg) ${flip}`;
-    };
-
-    window.pvRotateCamera = function() {
-        window.pvRotation = (window.pvRotation + 90) % 360;
-        window.pvUpdateVideoTransform();
-        return '';
-    };
-
-    window.pvFlipCamera = function() {
-        window.pvFlipped = !window.pvFlipped;
-        window.pvUpdateVideoTransform();
-        return '';
-    };
-
-    window.pvCaptureFrame = function(dummy, conf, iou, mode) {
-        const video = document.getElementById('live-camera-video');
-        const flash = document.getElementById('camera-flash');
-        if (!video || !window.pvStream || video.readyState < 2) {
-            alert('Please click "🟢 Turn Camera ON" first to start your live camera feed!');
-            return ['', conf, iou, mode];
-        }
-
-        if (flash) {
-            flash.style.opacity = '0.75';
-            setTimeout(() => { flash.style.opacity = '0'; }, 150);
-        }
-
-        const canvas = document.createElement('canvas');
-        const vw = video.videoWidth || 640;
-        const vh = video.videoHeight || 480;
-        const rot = window.pvRotation || 0;
-        const flipped = window.pvFlipped || false;
-
-        if (rot === 90 || rot === 270) {
-            canvas.width = vh;
-            canvas.height = vw;
-        } else {
-            canvas.width = vw;
-            canvas.height = vh;
-        }
-
-        const ctx = canvas.getContext('2d');
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate((rot * Math.PI) / 180);
-        if (flipped) {
-            ctx.scale(-1, 1);
-        }
-        ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
-
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-        return [dataUrl, conf, iou, mode];
-    };
-
-    // Auto-start camera when page is ready
-    setTimeout(() => {
-        if (document.getElementById('live-camera-video')) {
-            window.pvStartCamera();
-        }
-    }, 600);
-    </script>
-    """)
+    # Reactive Camera States
+    camera_active = gr.State(True)
+    current_cam_photo = gr.State(None)
 
     with gr.Row(elem_id="main-app-row"):
         # LEFT COLUMN: INPUT (LIVE CAMERA & UPLOAD TABS), TUNING & PRESETS
@@ -1280,17 +1197,25 @@ with gr.Blocks(
             with gr.Tabs(elem_id="input-mode-tabs"):
                 # TAB 1: LIVE CAMERA (CLICK PIC & CLASSIFY)
                 with gr.TabItem("📸 Live Camera (Click & Classify)", id="tab-cam"):
-                    gr.HTML("""
-                    <div id="camera-viewport-card" style="position: relative; width: 100%; height: 310px; background: #000; border-radius: 12px; overflow: hidden; border: 1px solid rgba(148, 163, 184, 0.2); display: flex; align-items: center; justify-content: center;">
-                        <video id="live-camera-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; display: none; transition: transform 0.25s ease;"></video>
-                        <div id="camera-off-overlay" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #94A3B8; text-align: center; padding: 20px;">
-                            <span style="font-size: 2.5em;">📷</span>
-                            <div style="font-weight: 700; color: #F1F5F9; font-size: 1.05em;">Camera is Currently OFF</div>
-                            <div style="font-size: 0.82em; max-width: 280px;">Tap "🟢 Turn Camera ON" below to start the live camera feed.</div>
+                    cam_input = gr.Image(
+                        label="📸 Live Camera Viewfinder",
+                        sources=["webcam"],
+                        type="numpy",
+                        height=310,
+                        visible=True,
+                    )
+
+                    cam_off_card = gr.HTML(
+                        """
+                        <div id="camera-off-overlay" style="width: 100%; height: 310px; background: rgba(15, 23, 42, 0.95); border: 2px dashed rgba(239, 68, 68, 0.4); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #94A3B8; text-align: center; padding: 20px;">
+                            <span style="font-size: 3em;">📷🚫</span>
+                            <div style="font-weight: 800; color: #F87171; font-size: 1.15em;">Camera is Powered OFF</div>
+                            <div style="font-size: 0.88em; max-width: 320px; color: #CBD5E1;">Hardware camera stream is halted. No visual data is being captured or transmitted.</div>
+                            <div style="font-size: 0.80em; color: #64748B;">Tap <b>🟢 Turn Camera ON</b> below to reactivate.</div>
                         </div>
-                        <div id="camera-flash" style="position: absolute; inset: 0; background: white; opacity: 0; pointer-events: none; transition: opacity 0.15s ease;"></div>
-                    </div>
-                    """)
+                        """,
+                        visible=False,
+                    )
 
                     with gr.Row():
                         cam_power_btn = gr.Button("🔴 Turn Camera OFF", elem_id="cam-power-btn", elem_classes=["power-btn"], size="sm")
@@ -1300,12 +1225,9 @@ with gr.Blocks(
                         cam_rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["cam-btn"], size="sm")
                         cam_flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
 
-                    # Hidden Transport Textbox for Camera Base64
-                    cam_b64_transfer = gr.Textbox(visible=False, elem_id="cam-b64-transfer")
-
                     gr.HTML("""
-                    <div style="font-size: 0.76em; color: #94A3B8; text-align: center; margin-top: 2px;">
-                        💡 <b>Tip:</b> Click <b>📸 Click Pic & Classify Now</b> to capture your live snapshot! If photo is sideways on mobile, tap <b>Rotate 90°</b>.
+                    <div style="font-size: 0.78em; color: #94A3B8; text-align: center; margin-top: 4px;">
+                        💡 <b>Tip:</b> Click <b>⚪ Camera Shutter</b> inside the viewfinder to snap, then tap <b>Click Pic & Classify Now</b>! If sideways on mobile, tap <b>Rotate 90°</b>.
                     </div>
                     """)
 
@@ -1315,7 +1237,7 @@ with gr.Blocks(
                         label="📤 Upload Produce Image / Clipboard",
                         type="numpy",
                         sources=["upload", "clipboard"],
-                        height=290,
+                        height=310,
                     )
 
                     file_analyze_btn = gr.Button("🔍 Analyze Uploaded Produce", elem_classes=["analyze-btn"], size="lg")
@@ -1396,31 +1318,33 @@ with gr.Blocks(
 
     # 1. Live Camera Actions
     cam_power_btn.click(
-        fn=lambda: None,
-        inputs=[],
-        outputs=[],
-        js="() => { window.pvToggleCamera(); return []; }",
+        fn=toggle_camera_power,
+        inputs=[camera_active],
+        outputs=[camera_active, cam_input, cam_off_card, cam_power_btn, privacy_badge],
     )
 
     cam_snap_btn.click(
-        fn=cam_snap_and_detect,
-        inputs=[cam_b64_transfer, conf_slider, iou_slider, preset_mode],
-        outputs=[cam_b64_transfer, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
-        js="(dummy, conf, iou, mode) => { return window.pvCaptureFrame(dummy, conf, iou, mode); }",
+        fn=on_cam_snap_and_detect,
+        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+    )
+
+    cam_input.change(
+        fn=on_cam_snap_and_detect,
+        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
     )
 
     cam_rotate_btn.click(
-        fn=rotate_cam_and_detect,
-        inputs=[cam_b64_transfer, conf_slider, iou_slider, preset_mode],
-        outputs=[cam_b64_transfer, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
-        js="(b64, conf, iou, mode) => { window.pvRotateCamera(); return [b64, conf, iou, mode]; }",
+        fn=on_cam_rotate,
+        inputs=[current_cam_photo, conf_slider, iou_slider, preset_mode],
+        outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
     )
 
     cam_flip_btn.click(
-        fn=flip_cam_and_detect,
-        inputs=[cam_b64_transfer, conf_slider, iou_slider, preset_mode],
-        outputs=[cam_b64_transfer, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
-        js="(b64, conf, iou, mode) => { window.pvFlipCamera(); return [b64, conf, iou, mode]; }",
+        fn=on_cam_flip,
+        inputs=[current_cam_photo, conf_slider, iou_slider, preset_mode],
+        outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
     )
 
     # 2. Upload / File Actions
@@ -1452,4 +1376,4 @@ with gr.Blocks(
     """)
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, inbrowser=True)
+    demo.launch(server_name="0.0.0.0", server_port=7860)
