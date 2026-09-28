@@ -1,122 +1,101 @@
-# 🥝🥕 Fruit & Vegetable Detector
+# 🥝 ProduceVision AI — Fruit & Vegetable Detection & Intelligence
 
-> **Detect, localise, and name** fruits and vegetables from any uploaded photo — right in your browser.
+> **High-Precision Localization · 36-Class Dual-Engine Verification · USDA Nutritional Intelligence · Smart Recipe Suggestions**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
-![YOLOv8](https://img.shields.io/badge/YOLOv8-Ultralytics-brightgreen)
+![YOLOv8](https://img.shields.io/badge/YOLOv8-Produce_Specialist-brightgreen)
 ![HuggingFace](https://img.shields.io/badge/HuggingFace-ViT--36--classes-orange)
-![Gradio](https://img.shields.io/badge/UI-Gradio-yellow)
-![License](https://img.shields.io/github/license/SHAHRIYARTAUFIK/Fruit-and-veg-)
-  
---- 
-
-## ✨ Features
-
-| Feature | Detail |
-|---------|--------|
-| 🟩 **Bounding Boxes** | YOLOv8 draws coloured boxes around each item |
-| 🏷️ **Name Labels** | Every box shows the fruit/veg name + confidence |
-| 🤖 **36-Class Classifier** | HuggingFace ViT covers 36 produce types |
-| 🖼️ **Easy Upload** | Drag-and-drop or paste from clipboard |
-| ⚡ **Fast** | First-time model download only; instant after that |
+![Gradio](https://img.shields.io/badge/UI-Gradio_6-yellow)
+![License](https://img.shields.io/badge/License-MIT-green)
 
 ---
 
-## 🚀 Setup & Run (VSCode)
+## ✨ What's New & Upgraded
 
-### 1 — Clone the repo
+| Feature | Description |
+|---------|-------------|
+| ⚡ **Dual-Engine Architecture** | Specialized **YOLOv8 Produce Detector** (35 classes) + **ViT-36 Classifier** ensemble. |
+| 🎯 **Accurate Multi-Produce Detection** | Resolves the legacy COCO limitation — accurately detects tomatoes, mangoes, potatoes, bell peppers, pineapples, grapes, etc. |
+| 🎚️ **Interactive Sliders** | Fine-tune **Confidence Threshold (10–90%)**, **IoU NMS Overlap**, and **Context Padding (%)**. |
+| 🥗 **USDA Nutritional Sheet** | Instant calorie and macronutrient breakdown (Carbs, Protein, Fiber, Sugars) + Key Vitamins & Health benefits. |
+| 👨‍🍳 **Smart Pantry Chef** | Recommends instant healthy recipes based on the fresh ingredients detected in your image. |
+| 📋 **Exportable Checklist** | Auto-generates a clean produce inventory / shopping checklist with item counts. |
+| 🖼️ **Interactive Crops Gallery** | View isolated crops of each detected produce item side-by-side. |
+| 🌟 **1-Click Test Gallery** | 6 built-in demo photos (Fruit Basket, Apples, Bananas, Bell Peppers, Tomatoes, Carrots). |
+| 📷 **Webcam & Clipboard Support** | Take live snapshots via webcam, paste from clipboard, or drag-and-drop. |
+
+---
+
+## 🔧 How the Dual-Engine Works
+
+```
+                        User Photo / Webcam / Demo
+                                    │
+                                    ▼
+                 ┌──────────────────────────────────────┐
+                 │  YOLOv8 Produce Specialist (best.pt) │
+                 │  Fast localization of produce boxes  │
+                 └──────────────────┬───────────────────┘
+                                    │
+                         [Extracted Item Crops]
+                          (with Context Padding)
+                                    │
+                                    ▼
+                 ┌──────────────────────────────────────┐
+                 │    ViT-36 High-Fidelity Classifier   │
+                 │    Cross-validates candidate labels   │
+                 └──────────────────┬───────────────────┘
+                                    │
+                        [Smart Ensemble Decision]
+                                    │
+        ┌───────────────────────────┼───────────────────────────┐
+        ▼                           ▼                           ▼
+[Annotated Visual Map]      [USDA Nutrition Sheet]     [Smart Recipe & Pantry]
+(Boxes + Confidence +       (Calories, Carbs,          (Healthy Culinary Ideas
+ Crops Gallery)              Vitamins & Benefits)       + Exportable Checklist)
+```
+
+---
+
+## 📋 Supported Classes (36 Total)
+
+**Fruits:**
+> Apple · Banana · Coconut · Grape · Green Orange · Kiwi · Lemon · Mango · Melon · Orange · Peach · Pear · Pineapple · Pomegranate · Strawberry · Watermelon
+
+**Vegetables & Herbs:**
+> Beetroot · Bell Pepper (Capsicum) · Bitter Gourd · Bottle Gourd · Broccoli · Cabbage · Carrot · Cauliflower · Chilli Pepper · Corn (Maize) · Cucumber · Eggplant · Garlic · Ginger · Jalapeño · Lettuce · Okra · Onion · Paprika · Peas · Potato · Radish · Soy Beans · Spinach · Sweetcorn · Sweet Potato · Tomato · Turnip
+
+---
+
+## 🚀 Quick Start
+
+### 1 — Clone the Repository
 ```bash
 git clone https://github.com/SHAHRIYARTAUFIK/Fruit-and-veg-.git
 cd Fruit-and-veg-
 ```
 
-### 2 — Create a virtual environment
-```bash
-# Windows
-python -m venv venv
-venv\Scripts\activate
-
-# macOS / Linux
-python3 -m venv venv
-source venv/bin/activate
-```
-
-### 3 — Install dependencies
+### 2 — Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4 — Run the app
-```bash
-python app.py
-```
+### 3 — Launch the Application
+- **Windows (Double-click or run):**
+  ```cmd
+  run_app.bat
+  ```
+  *or*
+  ```cmd
+  py -3.13 app.py
+  ```
 
 Your browser opens automatically at **http://localhost:7860** 🎉
 
-> **First run:** YOLOv8 (~6 MB) and the ViT model (~330 MB) are downloaded automatically.  
-> Subsequent runs start immediately from cache.
-
 ---
 
-## 📋 Supported Classes (36 total)
+## 💡 Pro Tips for Best Accuracy
 
-**Fruits**
-> Apple · Banana · Coconut · Grape · Kiwi · Lemon · Mango · Orange · Paprika · Pear · Pineapple · Pomegranate · Strawberry · Watermelon
-
-**Vegetables**
-> Beetroot · Bell Pepper · Broccoli · Cabbage · Capsicum · Carrot · Cauliflower · Chilli Pepper · Corn · Cucumber · Eggplant · Garlic · Ginger · Jalapeño · Lettuce · Onion · Peas · Potato · Raddish · Spinach · Sweetcorn · Sweetpotato · Tomato · Turnip
-
----
-
-## 🗂️ Project Structure
-
-```
-Fruit-and-veg-/
-├── app.py              ← Main Gradio application
-├── requirements.txt    ← Python dependencies
-├── .gitignore          ← Git ignore rules
-└── README.md           ← This file
-```
-
----
-
-## 🔧 How It Works
-
-```
-Upload Photo
-     │
-     ├──▶ YOLOv8n (COCO trained)
-     │         Detects apple, banana, orange, broccoli, carrot
-     │         Draws coloured bounding boxes + confidence labels
-     │
-     └──▶ HuggingFace ViT Classifier
-               Runs on full image AND each detected crop
-               Returns top-6 predictions across all 36 classes
-
-     ──▶ Results panel + annotated image displayed side-by-side
-```
-
----
-
-## 🧰 Models Used
-
-| Model | Source | Size |
-|-------|--------|------|
-| **YOLOv8n** | [Ultralytics](https://ultralytics.com) | ~6 MB |
-| **fruits-and-vegetables-detector-36** | [HuggingFace](https://huggingface.co/jazzmacedo/fruits-and-vegetables-detector-36) | ~330 MB |
-
----
-
-## 💡 Tips for Best Results
-
-- ☀️ Use **well-lit, clear** photos
-- 🖼️ Produce should **fill most of the frame**
-- 🔍 **Close-up shots** of individual items work great
-- 📷 Avoid heavy shadows or blurry images
-- 🛒 Works well with **1–6 items** per image
-
----
-
-## 📄 License
-
-MIT © [SHAHRIYARTAUFIK](https://github.com/SHAHRIYARTAUFIK)
+- **Single or Multiple Items**: Works on isolated single fruits as well as multi-item market baskets.
+- **Cluttered Images**: If produce items are overlapping, slide the **Confidence Threshold** down to `0.25–0.30` and adjust **IoU NMS** to `0.40`.
+- **Lighting**: Bright, natural lighting produces the highest confidence scores.

@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 *.py[cod]
+*$py.class
 *.pyo
 *.pyd
 .Python
@@ -13,27 +14,30 @@ venv/
 .venv/
 env/
 
-# Model weights (auto-downloaded, don't commit)
+# Model weights (auto-downloaded from Hugging Face if not present)
 *.pt
 *.pth
 *.onnx
 *.bin
 *.safetensors
 
-# HuggingFace cache
+# HuggingFace & torch cache
 .cache/
+torch_cache/
 
-# Gradio temp files
+# Gradio artifacts
 gradio_cached_examples/
 flagged/
 
-# VSCode
+# VSCode / IDE
 .vscode/
 *.code-workspace
+.idea/
 
-# OS
+# OS artifacts
 .DS_Store
 Thumbs.db
+ehthumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
