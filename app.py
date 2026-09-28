@@ -1321,30 +1321,35 @@ with gr.Blocks(
         fn=toggle_camera_power,
         inputs=[camera_active],
         outputs=[camera_active, cam_input, cam_off_card, cam_power_btn, privacy_badge],
+        api_name=False,
     )
 
     cam_snap_btn.click(
         fn=on_cam_snap_and_detect,
         inputs=[cam_input, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        api_name=False,
     )
 
     cam_input.change(
         fn=on_cam_snap_and_detect,
         inputs=[cam_input, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        api_name=False,
     )
 
     cam_rotate_btn.click(
         fn=on_cam_rotate,
         inputs=[current_cam_photo, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        api_name=False,
     )
 
     cam_flip_btn.click(
         fn=on_cam_flip,
         inputs=[current_cam_photo, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        api_name=False,
     )
 
     # 2. Upload / File Actions
@@ -1352,21 +1357,25 @@ with gr.Blocks(
         fn=detect_and_analyze,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=analysis_outputs,
+        api_name=False,
     )
     file_rotate_btn.click(
         fn=rotate_file_and_detect,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=[file_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        api_name=False,
     )
     file_flip_btn.click(
         fn=flip_file_and_detect,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=[file_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        api_name=False,
     )
     file_input.change(
         fn=on_auto_detect_file,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=analysis_outputs,
+        api_name=False,
     )
 
     gr.HTML("""
