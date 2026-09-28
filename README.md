@@ -9,13 +9,13 @@ app_file: app.py
 pinned: false
 ---
 
-# 🥝 ProduceVision AI — Fruit & Vegetable Detection & Intelligence
+# 🥝 ProduceVision Studio Pro — Enterprise Fruit & Vegetable AI
 
-> **High-Precision Localization · 36-Class Dual-Engine Verification · USDA Nutritional Intelligence · Smart Recipe Suggestions**
+> **High-Precision 63-Class Produce Localization · ViT-36 Consensus Verification · Zero-Tofu Clean Canvas · USDA Nutritional Intelligence**
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)
-![YOLOv8](https://img.shields.io/badge/YOLOv8-Produce_Specialist-brightgreen)
-![HuggingFace](https://img.shields.io/badge/HuggingFace-ViT--36--classes-orange)
+![YOLOv8](https://img.shields.io/badge/YOLOv8m-63_Produce_Classes-brightgreen)
+![HuggingFace](https://img.shields.io/badge/HuggingFace-ViT--36--Ensemble-orange)
 ![Gradio](https://img.shields.io/badge/UI-Gradio_6-yellow)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
@@ -25,14 +25,14 @@ pinned: false
 
 | Feature | Description |
 |---------|-------------|
-| ⚡ **Dual-Engine Architecture** | Specialized **YOLOv8 Produce Detector** (35 classes) + **ViT-36 Classifier** ensemble. |
-| 🎯 **Accurate Multi-Produce Detection** | Resolves the legacy COCO limitation — accurately detects tomatoes, mangoes, potatoes, bell peppers, pineapples, grapes, etc. |
-| 🎚️ **Interactive Sliders** | Fine-tune **Confidence Threshold (10–90%)**, **IoU NMS Overlap**, and **Context Padding (%)**. |
-| 🥗 **USDA Nutritional Sheet** | Instant calorie and macronutrient breakdown (Carbs, Protein, Fiber, Sugars) + Key Vitamins & Health benefits. |
+| ⚡ **63-Class YOLOv8m Specialist** | Upgraded to high-capacity YOLOv8 Medium covering 63 distinct fruits, vegetables, squashes, and root crops (potatoes, pumpkins, avocados, zucchini, mushrooms, etc.). |
+| 🛡️ **Dual-Engine Consensus** | Cross-validates every candidate detection against ViT-36 to eliminate false classifications (e.g. potatoes never mislabeled as pears). |
+| 🏷️ **Clean High-DPI Canvas** | Replaced unrendered font glyphs with ASCII-safe high-contrast badges (`[Veg] Potato 95%`). |
+| 🎚️ **Precision Sensitivity Controls** | Fine-tune **Confidence Threshold**, **IoU NMS Overlap**, and preset modes (`🎯 Consensus Mode` vs `⚡ High Sensitivity`). |
+| 🥗 **USDA Nutritional Analytics** | Real-time calorie and macronutrient breakdown (Carbs, Protein, Fiber, Sugars) + Key Vitamins & Health benefits. |
 | 👨‍🍳 **Smart Pantry Chef** | Recommends instant healthy recipes based on the fresh ingredients detected in your image. |
 | 📋 **Exportable Checklist** | Auto-generates a clean produce inventory / shopping checklist with item counts. |
-| 🖼️ **Interactive Crops Gallery** | View isolated crops of each detected produce item side-by-side. |
-| 🌟 **1-Click Test Gallery** | 6 built-in demo photos (Fruit Basket, Apples, Bananas, Bell Peppers, Tomatoes, Carrots). |
+| 🌟 **1-Click Test Showcase** | 6 built-in demo photos (Potatoes, Fruit Basket, Bell Peppers, Tomatoes, Carrots, Bananas). |
 | 📷 **Webcam & Clipboard Support** | Take live snapshots via webcam, paste from clipboard, or drag-and-drop. |
 
 ---
