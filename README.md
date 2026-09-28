@@ -71,7 +71,7 @@
 
 ### 1 — Clone the Repository
 ```bash
-git clone https://github.com/SHAHRIYARTAUFIK/Fruit-and-veg-.git
+git clone https://github.com/DeathSHMASHER/Fruit-and-veg-.git
 cd Fruit-and-veg-
 ```
 
