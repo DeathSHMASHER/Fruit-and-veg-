@@ -1,3 +1,14 @@
+---
+title: FruitnVeg
+emoji: 🥝
+colorFrom: green
+colorTo: emerald
+sdk: gradio
+sdk_version: 6.8.0
+app_file: app.py
+pinned: false
+---
+
 # 🥝 ProduceVision AI — Fruit & Vegetable Detection & Intelligence
 
 > **High-Precision Localization · 36-Class Dual-Engine Verification · USDA Nutritional Intelligence · Smart Recipe Suggestions**
