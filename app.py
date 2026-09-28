@@ -576,29 +576,29 @@ def build_overview_dashboard(detections: List[Dict]) -> str:
 
     html = f"""
     <!-- TOP STAT METRICS BAR -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-bottom: 14px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin-bottom: 12px;">
         <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.08)); border: 1px solid rgba(16, 185, 129, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.7em; text-transform: uppercase; color: #34D399; font-weight: 700;">Total Objects</div>
-            <div style="font-size: 1.7em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">{total_count}</div>
-            <div style="font-size: 0.7em; color: #94A3B8;">{fruit_cnt} Fruit · {veg_cnt} Veg</div>
+            <div style="font-size: 0.68em; text-transform: uppercase; color: #34D399; font-weight: 700;">Total Objects</div>
+            <div style="font-size: 1.6em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">{total_count}</div>
+            <div style="font-size: 0.68em; color: #94A3B8;">{fruit_cnt} Fruit · {veg_cnt} Veg</div>
         </div>
 
         <div style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(249, 115, 22, 0.08)); border: 1px solid rgba(245, 158, 11, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.7em; text-transform: uppercase; color: #FBBF24; font-weight: 700;">Est. Calories</div>
-            <div style="font-size: 1.7em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">~{total_cals}</div>
-            <div style="font-size: 0.7em; color: #94A3B8;">kcal produce</div>
+            <div style="font-size: 0.68em; text-transform: uppercase; color: #FBBF24; font-weight: 700;">Est. Calories</div>
+            <div style="font-size: 1.6em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">~{total_cals}</div>
+            <div style="font-size: 0.68em; color: #94A3B8;">kcal produce</div>
         </div>
 
         <div style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.08)); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.7em; text-transform: uppercase; color: #818CF8; font-weight: 700;">Subjects</div>
-            <div style="font-size: 1.7em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">{human_cnt + pet_cnt}</div>
-            <div style="font-size: 0.7em; color: #94A3B8;">{human_cnt} Human · {pet_cnt} Pet</div>
+            <div style="font-size: 0.68em; text-transform: uppercase; color: #818CF8; font-weight: 700;">Subjects</div>
+            <div style="font-size: 1.6em; font-weight: 850; color: #FFFFFF; line-height: 1.1;">{human_cnt + pet_cnt}</div>
+            <div style="font-size: 0.68em; color: #94A3B8;">{human_cnt} Human · {pet_cnt} Pet</div>
         </div>
 
         <div style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.08)); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 10px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.7em; text-transform: uppercase; color: #60A5FA; font-weight: 700;">Engine Mode</div>
-            <div style="font-size: 1.1em; font-weight: 800; color: #FFFFFF; margin-top: 4px;">YOLOv8m + COCO</div>
-            <div style="font-size: 0.7em; color: #94A3B8;">Multi-Entity AI</div>
+            <div style="font-size: 0.68em; text-transform: uppercase; color: #60A5FA; font-weight: 700;">Engine Mode</div>
+            <div style="font-size: 1.05em; font-weight: 800; color: #FFFFFF; margin-top: 4px;">YOLOv8m + COCO</div>
+            <div style="font-size: 0.68em; color: #94A3B8;">Consensus AI</div>
         </div>
     </div>
     """
@@ -636,19 +636,19 @@ def build_overview_dashboard(detections: List[Dict]) -> str:
             badge = "<span style='background: rgba(16,185,129,0.2); color: #34D399; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>✓ Verified Produce</span>"
 
         html += f"""
-        <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(148, 163, 184, 0.15); border-left: 5px solid {d['color']}; border-radius: 8px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.5em; line-height: 1;">{d['emoji']}</span>
-                <div>
-                    <div style="display: flex; align-items: center; gap: 6px;">
-                        <span style="font-weight: 750; font-size: 1em; color: #FFFFFF;">{d['label']}</span>
+        <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(148, 163, 184, 0.15); border-left: 5px solid {d['color']}; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                <span style="font-size: 1.4em; line-height: 1; flex-shrink: 0;">{d['emoji']}</span>
+                <div style="min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <span style="font-weight: 750; font-size: 0.95em; color: #FFFFFF;">{d['label']}</span>
                         {badge}
                     </div>
-                    <div style="font-size: 0.75em; color: #94A3B8; margin-top: 1px;">{sub_text}</div>
+                    <div style="font-size: 0.74em; color: #94A3B8; margin-top: 1px; word-break: break-word;">{sub_text}</div>
                 </div>
             </div>
-            <div style="text-align: right; min-width: 75px;">
-                <div style="font-weight: 850; font-size: 1.1em; color: {d['color']};">{pct}%</div>
+            <div style="text-align: right; min-width: 50px; flex-shrink: 0;">
+                <div style="font-weight: 850; font-size: 1.05em; color: {d['color']};">{pct}%</div>
             </div>
         </div>
         """
@@ -785,48 +785,156 @@ def build_checklist_text(detections: List[Dict]) -> str:
 
 CUSTOM_CSS = """
 /* Responsive Mobile-First ProduceVision Studio Pro */
-body, .gradio-container {
+*, *::before, *::after {
+    box-sizing: border-box !important;
+}
+
+html, body, .gradio-container {
     max-width: 1400px !important;
+    width: 100% !important;
     margin: 0 auto !important;
+    padding: 12px 14px !important;
     background-color: #070D18 !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
+    overflow-x: hidden !important;
 }
 
 #header-hero {
-    text-align: center;
-    padding: 16px 0 10px 0;
-    margin-bottom: 6px;
+    text-align: center !important;
+    padding: 10px 0 6px 0 !important;
+    margin-bottom: 8px !important;
+    width: 100% !important;
 }
 
 #header-title {
-    font-size: 2.4em;
-    font-weight: 900;
-    background: linear-gradient(135deg, #34D399 0%, #38BDF8 50%, #A78BFA 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.03em;
-    margin-bottom: 4px;
+    font-size: clamp(1.4em, 5.5vw, 2.3em) !important;
+    font-weight: 900 !important;
+    background: linear-gradient(135deg, #34D399 0%, #38BDF8 50%, #A78BFA 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    letter-spacing: -0.02em !important;
+    margin: 0 auto 6px auto !important;
+    line-height: 1.25 !important;
+    text-align: center !important;
+    width: 100% !important;
+    word-break: break-word !important;
 }
 
 #header-subtitle {
-    color: #94A3B8;
-    font-size: 0.98em;
-    max-width: 720px;
-    margin: 0 auto 8px auto;
-    line-height: 1.4;
+    color: #94A3B8 !important;
+    font-size: clamp(0.82em, 2.5vw, 0.96em) !important;
+    max-width: 680px !important;
+    margin: 0 auto 10px auto !important;
+    line-height: 1.45 !important;
+    text-align: center !important;
+    padding: 0 6px !important;
 }
 
-.engine-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: rgba(16, 185, 129, 0.12);
-    border: 1px solid rgba(16, 185, 129, 0.35);
-    color: #34D399;
-    padding: 4px 14px;
-    border-radius: 99px;
-    font-size: 0.8em;
-    font-weight: 600;
+.engine-badges-container {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin: 6px auto 14px auto !important;
+    width: 100% !important;
+    max-width: 720px !important;
+}
+
+.badge-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    border: 1px solid rgba(16, 185, 129, 0.35) !important;
+    color: #34D399 !important;
+    padding: 4px 10px !important;
+    border-radius: 99px !important;
+    font-size: 0.76em !important;
+    font-weight: 600 !important;
+    white-space: nowrap !important;
+}
+
+.badge-dot {
+    color: #10B981 !important;
+    font-size: 0.85em !important;
+}
+
+/* PC Desktop: 2 Columns Side by Side */
+#main-app-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 20px !important;
+    width: 100% !important;
+    align-items: flex-start !important;
+}
+
+#input-col {
+    flex: 5 !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+
+#output-col {
+    flex: 7 !important;
+    min-width: 0 !important;
+    width: auto !important;
+}
+
+/* Mobile & Tablet Layout (< 960px): Stack Vertically */
+@media screen and (max-width: 960px) {
+    body, .gradio-container {
+        padding: 6px 4px !important;
+    }
+
+    #main-app-row,
+    .gradio-container .row:not(#camera-ctrl-row) {
+        flex-direction: column !important;
+        display: flex !important;
+        gap: 16px !important;
+    }
+
+    #input-col,
+    #output-col,
+    #main-app-row > div,
+    .gradio-column {
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+    }
+}
+
+/* Horizontal Camera Control Buttons */
+#camera-ctrl-row {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 8px !important;
+    margin: 8px 0 !important;
+    width: 100% !important;
+}
+
+#camera-ctrl-row > * {
+    flex: 1 1 50% !important;
+    width: 50% !important;
+    min-width: 0 !important;
+}
+
+.cam-btn {
+    background: rgba(30, 41, 59, 0.9) !important;
+    color: #E2E8F0 !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    font-size: 0.86em !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    padding: 8px 6px !important;
+    text-align: center !important;
+    cursor: pointer !important;
+    transition: background 0.2s ease !important;
+}
+
+.cam-btn:hover {
+    background: rgba(51, 65, 85, 0.95) !important;
 }
 
 .analyze-btn {
@@ -839,6 +947,9 @@ body, .gradio-container {
     box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4) !important;
     transition: all 0.2s ease !important;
     margin-top: 8px !important;
+    width: 100% !important;
+    padding: 12px !important;
+    cursor: pointer !important;
 }
 
 .analyze-btn:hover {
@@ -846,29 +957,10 @@ body, .gradio-container {
     box-shadow: 0 6px 22px rgba(16, 185, 129, 0.6) !important;
 }
 
-.rotate-btn {
-    background: rgba(30, 41, 59, 0.8) !important;
-    color: #CBD5E1 !important;
-    border: 1px solid rgba(148, 163, 184, 0.25) !important;
-    font-size: 0.88em !important;
-    border-radius: 8px !important;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-    .gradio-container {
-        padding: 6px !important;
-    }
-    #header-title {
-        font-size: 1.8em !important;
-    }
-    #header-subtitle {
-        font-size: 0.88em !important;
-    }
-    .analyze-btn {
-        width: 100% !important;
-        padding: 12px !important;
-        font-size: 1.1em !important;
+/* Image containers responsive height */
+@media screen and (max-width: 768px) {
+    .gradio-image, .image-container {
+        max-height: 290px !important;
     }
 }
 
@@ -887,31 +979,30 @@ with gr.Blocks(
         <div id="header-subtitle">
             Enterprise computer vision: 63-class produce localization, ViT consensus verification, and automated Human & Pet detection.
         </div>
-        <div class="engine-pill">
-            <span style="color: #10B981;">●</span>
-            <span>63-Class Produce Model</span>
-            <span>·</span>
-            <span>👤 Human & 🐾 Pet Aware</span>
-            <span>·</span>
-            <span>📱 Mobile & Rotation Compatible</span>
+        <div class="engine-badges-container">
+            <span class="badge-pill"><span class="badge-dot">●</span> 63 Produce Classes</span>
+            <span class="badge-pill">👤 Human Aware</span>
+            <span class="badge-pill">🐾 Pet Aware</span>
+            <span class="badge-pill">📱 Mobile Camera Controls</span>
+            <span class="badge-pill">⚡ Live Auto-Detect</span>
         </div>
     </div>
     """)
 
-    with gr.Row():
+    with gr.Row(elem_id="main-app-row"):
         # LEFT COLUMN: INPUT, CAMERA CONTROLS & TUNING
-        with gr.Column(scale=5):
+        with gr.Column(scale=5, elem_id="input-col"):
             input_img = gr.Image(
-                label="📤 Photo / Mobile Camera / Clipboard",
+                label="📤 Photo / Camera / Clipboard",
                 type="numpy",
                 sources=["upload", "webcam", "clipboard"],
-                height=350,
+                height=320,
             )
 
             # MOBILE CAMERA CONTROLS (ROTATION & FLIP)
-            with gr.Row():
-                rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["rotate-btn"], size="sm")
-                flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["rotate-btn"], size="sm")
+            with gr.Row(elem_id="camera-ctrl-row"):
+                rotate_btn = gr.Button("🔄 Rotate 90°", elem_classes=["cam-btn"], size="sm")
+                flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
 
             live_toggle = gr.Checkbox(
                 label="⚡ Live Auto-Detect (instantly analyze camera snapshots & new uploads)",
@@ -963,22 +1054,22 @@ with gr.Blocks(
             )
 
         # RIGHT COLUMN: ANNOTATED CANVAS & DETAILED INTELLIGENCE
-        with gr.Column(scale=7):
+        with gr.Column(scale=7, elem_id="output-col"):
             annotated_canvas = gr.Image(
                 label="🎯 Precision Detection Map",
-                height=350,
+                height=320,
                 interactive=False,
             )
 
             # CLEAN 3-TAB INTERFACE (NO OVERFLOW '...')
             with gr.Tabs():
-                with gr.TabItem("📊 Detection Breakdown"):
+                with gr.TabItem("📊 Breakdown"):
                     overview_html = gr.HTML()
 
-                with gr.TabItem("🥗 Nutritional Sheet"):
+                with gr.TabItem("🥗 Nutrition"):
                     nutrition_html = gr.HTML()
 
-                with gr.TabItem("👨‍🍳 Chef & Pantry Checklist"):
+                with gr.TabItem("👨‍🍳 Chef & Checklist"):
                     recipes_html = gr.HTML()
                     checklist_txt = gr.Textbox(label="Exportable Inventory Checklist", lines=5, interactive=False)
 
