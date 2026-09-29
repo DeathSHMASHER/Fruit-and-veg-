@@ -1074,27 +1074,29 @@ html, body, .gradio-container {
     }
 }
 
-/* PRIVACY GREEN LIGHT - 70% LARGER THAN MOBILE OS INDICATOR WITH PULSING GLOW */
+/* PRIVACY GREEN LIGHT - 70% LARGER THAN MOBILE OS INDICATOR WITH PULSING GLOW (PINNED ON SCROLL) */
 #privacy-indicator {
     position: fixed !important;
-    top: 16px !important;
-    right: 18px !important;
-    z-index: 9999999 !important;
+    top: 14px !important;
+    right: 14px !important;
+    z-index: 999999999 !important;
     display: none !important; /* STRICTLY HIDDEN UNTIL CAMERA IS ACTIVE */
     align-items: center !important;
     gap: 8px !important;
-    background: rgba(5, 46, 22, 0.95) !important;
+    background: rgba(5, 46, 22, 0.96) !important;
     border: 2px solid #10B981 !important;
     border-radius: 99px !important;
     padding: 7px 16px 7px 12px !important;
     color: #6EE7B7 !important;
-    font-size: 0.88em !important;
+    font-size: clamp(0.76em, 2.5vw, 0.88em) !important;
     font-weight: 800 !important;
     letter-spacing: 0.03em !important;
-    box-shadow: 0 0 24px rgba(16, 185, 129, 0.9), 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+    box-shadow: 0 0 24px rgba(16, 185, 129, 0.95), 0 4px 16px rgba(0, 0, 0, 0.7) !important;
     backdrop-filter: blur(12px) !important;
     pointer-events: none !important;
     animation: privacy-pulse 2s infinite ease-in-out !important;
+    -webkit-transform: translateZ(0) !important;
+    transform: translateZ(0) !important; /* Hardware-accelerated fixed layer so it never jitters or leaves view during scroll */
 }
 
 #privacy-indicator.camera-active-live {
@@ -1119,6 +1121,43 @@ html, body, .gradio-container {
         box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 4px 18px rgba(0, 0, 0, 0.7);
         transform: scale(1.05);
     }
+}
+
+/* RESPONSIVE MOBILE TABS: BOTH TABS CLEANLY VISIBLE SIDE-BY-SIDE WITHOUT OVERFLOW */
+#input-mode-tabs .tab-nav,
+div[role="tablist"] {
+    display: flex !important;
+    width: 100% !important;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.25) !important;
+    overflow-x: hidden !important;
+}
+
+#input-mode-tabs .tab-nav > button,
+div[role="tablist"] > button {
+    flex: 1 1 50% !important;
+    max-width: 50% !important;
+    min-width: 0 !important;
+    text-align: center !important;
+    justify-content: center !important;
+    padding: 10px 8px !important;
+    font-size: clamp(0.88em, 3.4vw, 1.02em) !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+    overflow: hidden !important;
+    border-radius: 10px 10px 0 0 !important;
+    transition: all 0.2s ease !important;
+}
+
+/* BUTTON PROCESSING / ANALYZING STATE */
+.btn-processing {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%) !important;
+    cursor: wait !important;
+    pointer-events: none !important;
+    opacity: 0.7 !important;
+    box-shadow: none !important;
 }
 
 /* LIVE CAMERA STUDIO VIEWPORT & CONTROLS */
@@ -1796,6 +1835,82 @@ CLIENT_JS = """
 
         return canvas.toDataURL('image/jpeg', 0.92);
     };
+
+    // 7. Pinned Hardware Privacy Light Mounting
+    function mountPrivacyIndicator() {
+        const ind = document.getElementById('privacy-indicator');
+        if (ind && ind.parentElement !== document.body) {
+            document.body.appendChild(ind);
+        }
+    }
+    mountPrivacyIndicator();
+    setTimeout(mountPrivacyIndicator, 500);
+    setTimeout(mountPrivacyIndicator, 1500);
+
+    // 8. Mobile Auto-Jump / Smooth Scroll to Result Window
+    window.scrollToResultWindow = function() {
+        setTimeout(() => {
+            const target = document.getElementById('output-col');
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 120);
+    };
+
+    // 9. Snap Button Locking & Mutation Observer Watcher
+    window._snapProcessingActive = false;
+    window._snapSafetyTimer = null;
+
+    window.disableSnapButton = function() {
+        window._snapProcessingActive = true;
+        const snapBtn = document.getElementById('cam-snap-btn') || document.querySelector('#input-col .analyze-btn');
+        if (snapBtn) {
+            if (!snapBtn.dataset.originalHtml) {
+                snapBtn.dataset.originalHtml = snapBtn.innerHTML;
+            }
+            snapBtn.innerHTML = '<span>⏳ Analyzing Produce with AI...</span>';
+            snapBtn.classList.add('btn-processing');
+            snapBtn.style.pointerEvents = 'none';
+        }
+        clearTimeout(window._snapSafetyTimer);
+        window._snapSafetyTimer = setTimeout(() => {
+            window.reEnableSnapButton();
+        }, 12000);
+    };
+
+    window.reEnableSnapButton = function() {
+        window._snapProcessingActive = false;
+        const snapBtn = document.getElementById('cam-snap-btn') || document.querySelector('#input-col .analyze-btn');
+        if (snapBtn && snapBtn.classList.contains('btn-processing')) {
+            if (snapBtn.dataset.originalHtml) {
+                snapBtn.innerHTML = snapBtn.dataset.originalHtml;
+            } else {
+                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
+            }
+            snapBtn.classList.remove('btn-processing');
+            snapBtn.style.pointerEvents = 'auto';
+        }
+    };
+
+    function setupProcessingWatcher() {
+        const outputCol = document.getElementById('output-col');
+        if (!outputCol) {
+            setTimeout(setupProcessingWatcher, 400);
+            return;
+        }
+
+        const observer = new MutationObserver(() => {
+            if (window._snapProcessingActive) {
+                setTimeout(() => {
+                    window.reEnableSnapButton();
+                    window.scrollToResultWindow();
+                }, 300);
+            }
+        });
+
+        observer.observe(outputCol, { childList: true, subtree: true, characterData: true });
+    }
+    setupProcessingWatcher();
 }
 """
 
@@ -1841,8 +1956,8 @@ with gr.Blocks(
         with gr.Column(scale=5, elem_id="input-col"):
 
             with gr.Tabs(elem_id="input-mode-tabs"):
-                # TAB 1: LIVE CAMERA (CLICK PIC & CLASSIFY)
-                with gr.TabItem("📸 Live Camera (Click & Classify)", id="tab-cam"):
+                # TAB 1: LIVE CAM
+                with gr.TabItem("📸 Live Cam", id="tab-cam"):
                     cam_b64_transfer = gr.Textbox(elem_id="cam-b64-transfer", visible=False)
 
                     gr.HTML(
@@ -1909,7 +2024,7 @@ with gr.Blocks(
                         """
                     )
 
-                    cam_snap_btn = gr.Button("📸 Click Pic & Classify Now", elem_classes=["analyze-btn"], size="lg")
+                    cam_snap_btn = gr.Button("📸 Click Pic & Classify Now", elem_id="cam-snap-btn", elem_classes=["analyze-btn"], size="lg")
 
                     with gr.Row(elem_id="camera-ctrl-row"):
                         cam_rotate_btn = gr.Button("🔄 Rotate Saved Pic 90°", elem_classes=["cam-btn"], size="sm")
@@ -1921,8 +2036,8 @@ with gr.Blocks(
                     </div>
                     """)
 
-                # TAB 2: UPLOAD PHOTO & SAMPLES
-                with gr.TabItem("📁 Upload Photo / Samples", id="tab-upload"):
+                # TAB 2: UPLOAD
+                with gr.TabItem("📁 Upload", id="tab-upload"):
                     file_input = gr.Image(
                         label="📤 Upload Produce Image / Clipboard",
                         type="numpy",
@@ -1930,7 +2045,7 @@ with gr.Blocks(
                         height=310,
                     )
 
-                    file_analyze_btn = gr.Button("🔍 Analyze Uploaded Produce", elem_classes=["analyze-btn"], size="lg")
+                    file_analyze_btn = gr.Button("🔍 Analyze Uploaded Produce", elem_id="file-analyze-btn", elem_classes=["analyze-btn"], size="lg")
 
                     with gr.Row(elem_id="camera-ctrl-row"):
                         file_rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["cam-btn"], size="sm")
@@ -2012,13 +2127,26 @@ with gr.Blocks(
         inputs=[cam_b64_transfer, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
         js="""(b64, conf, iou, mode) => {
+            let frame = b64;
             if (typeof window.captureCameraFrame === 'function') {
-                const frame = window.captureCameraFrame();
-                if (frame) {
-                    return [frame, conf, iou, mode];
+                const captured = window.captureCameraFrame();
+                if (captured) {
+                    frame = captured;
                 }
             }
-            return [b64, conf, iou, mode];
+            // 1. Immediately turn off the camera stream upon capture
+            if (typeof window.stopLiveCamera === 'function') {
+                window.stopLiveCamera();
+            }
+            // 2. Disable click button until result is shown & processing is done
+            if (typeof window.disableSnapButton === 'function') {
+                window.disableSnapButton();
+            }
+            // 3. Jump / auto-scroll directly into result window for mobile & desktop
+            if (typeof window.scrollToResultWindow === 'function') {
+                window.scrollToResultWindow();
+            }
+            return [frame, conf, iou, mode];
         }""",
         api_name=False,
     )
@@ -2042,6 +2170,11 @@ with gr.Blocks(
         fn=detect_and_analyze,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=analysis_outputs,
+        js="""() => {
+            if (typeof window.scrollToResultWindow === 'function') {
+                window.scrollToResultWindow();
+            }
+        }""",
         api_name=False,
     )
     file_rotate_btn.click(
@@ -2060,6 +2193,11 @@ with gr.Blocks(
         fn=on_auto_detect_file,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=analysis_outputs,
+        js="""() => {
+            if (typeof window.scrollToResultWindow === 'function') {
+                window.scrollToResultWindow();
+            }
+        }""",
         api_name=False,
     )
 
