@@ -1074,6 +1074,35 @@ html, body, .gradio-container {
     }
 }
 
+/* USER & DETECTION GUIDE BUTTON */
+.guide-manual-btn {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+    border: 1.5px solid rgba(56, 189, 248, 0.45) !important;
+    border-radius: 12px !important;
+    color: #38BDF8 !important;
+    padding: 10px 16px !important;
+    font-size: 0.92em !important;
+    font-weight: 750 !important;
+    text-decoration: none !important;
+    margin: 12px 0 8px 0 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+    cursor: pointer !important;
+}
+
+.guide-manual-btn:hover {
+    background: linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(16, 185, 129, 0.2) 100%) !important;
+    border-color: #38BDF8 !important;
+    color: #BAE6FD !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 18px rgba(56, 189, 248, 0.4) !important;
+}
+
 /* PRIVACY GREEN LIGHT - PINNED ON SCROLL (100% FIXED IN VIEWPORT) */
 #privacy-indicator,
 #fixed-privacy-pill {
@@ -2210,6 +2239,14 @@ with gr.Blocks(
                     with gr.Row(elem_id="camera-ctrl-row"):
                         file_rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["cam-btn"], size="sm")
                         file_flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
+
+            gr.HTML("""
+            <a href="https://drive.google.com/file/d/1GlJp0b3TPsh27dNES0UKyXmZpDbcAIbb/view?usp=sharing" target="_blank" rel="noopener noreferrer" class="guide-manual-btn">
+                <span style="font-size: 1.25em; line-height: 1;">📖</span>
+                <span><b>User & Detection Guide (PDF Manual)</b></span>
+                <span style="font-size: 0.80em; background: rgba(56, 189, 248, 0.2); padding: 3px 8px; border-radius: 6px; margin-left: auto;">↗ Open Guide</span>
+            </a>
+            """)
 
             with gr.Accordion("⚙️ Precision Sensitivity & Detection Preset", open=False):
                 preset_mode = gr.Radio(
