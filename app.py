@@ -605,34 +605,36 @@ def toggle_camera_power(is_active):
         )
 
 def on_cam_snap_and_detect(photo, conf_thresh, iou_thresh, mode):
-    """Classify live camera snapshot. If not taken yet, instruct user."""
-    if photo is None:
+    """Classify live camera snapshot. Supports Base64 data URLs, numpy arrays, or PIL images."""
+    if photo is None or (isinstance(photo, str) and not photo.strip()):
         msg = """
         <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 18px; text-align: center; color: #FCD34D;">
             <div style="font-size: 2.2em; margin-bottom: 6px;">📸</div>
-            <div style="font-weight: 800; font-size: 1.1em; color: #FDE68A;">No Photo Snapped Yet</div>
+            <div style="font-weight: 800; font-size: 1.1em; color: #FDE68A;">Camera is Not Started</div>
             <p style="font-size: 0.88em; margin-top: 6px; color: #CBD5E1;">
-                Tap the <b>white camera shutter circle ⚪</b> inside the camera viewfinder to capture a live photo, then tap <b>📸 Click Pic & Classify Now</b>!
+                Tap <b>🟢 Start Live Camera</b> in the viewfinder above to turn on your camera, then tap <b>📸 Click Pic & Classify Now</b>!
             </p>
         </div>
         """
         return None, None, msg, "", "", ""
     canvas, ov, nut, rec, chk = detect_and_analyze(photo, conf_thresh, iou_thresh, mode)
-    return photo, canvas, ov, nut, rec, chk
+    pil_img = safe_to_pil(photo)
+    stored_np = np.array(pil_img) if pil_img else None
+    return stored_np, canvas, ov, nut, rec, chk
 
 def on_cam_rotate(current_photo, conf_thresh, iou_thresh, mode):
-    """Rotate camera snapshot 90 degrees clockwise without re-mounting webcam."""
+    """Rotate camera snapshot 90 degrees clockwise."""
     if current_photo is None:
-        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 14px; text-align: center; color: #7DD3FC;'>🔄 Please snap a photo using the camera shutter button first before rotating.</div>"
+        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 14px; text-align: center; color: #7DD3FC;'>🔄 Tap 'Click Pic & Classify Now' to capture an image first before rotating the saved photo.</div>"
         return None, None, msg, "", "", ""
     rot_np = rotate_image_90(current_photo)
     canvas, ov, nut, rec, chk = detect_and_analyze(rot_np, conf_thresh, iou_thresh, mode)
     return rot_np, canvas, ov, nut, rec, chk
 
 def on_cam_flip(current_photo, conf_thresh, iou_thresh, mode):
-    """Mirror/Flip camera snapshot horizontally without re-mounting webcam."""
+    """Mirror/Flip camera snapshot horizontally."""
     if current_photo is None:
-        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 14px; text-align: center; color: #7DD3FC;'>↔️ Please snap a photo using the camera shutter button first before mirroring.</div>"
+        msg = "<div style='background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 14px; text-align: center; color: #7DD3FC;'>↔️ Tap 'Click Pic & Classify Now' to capture an image first before mirroring the saved photo.</div>"
         return None, None, msg, "", "", ""
     flip_np = flip_image_horizontal(current_photo)
     canvas, ov, nut, rec, chk = detect_and_analyze(flip_np, conf_thresh, iou_thresh, mode)
@@ -1078,7 +1080,7 @@ html, body, .gradio-container {
     top: 16px !important;
     right: 18px !important;
     z-index: 9999999 !important;
-    display: flex !important;
+    display: none !important; /* STRICTLY HIDDEN UNTIL CAMERA IS ACTIVE */
     align-items: center !important;
     gap: 8px !important;
     background: rgba(5, 46, 22, 0.95) !important;
@@ -1093,6 +1095,10 @@ html, body, .gradio-container {
     backdrop-filter: blur(12px) !important;
     pointer-events: none !important;
     animation: privacy-pulse 2s infinite ease-in-out !important;
+}
+
+#privacy-indicator.camera-active-live {
+    display: flex !important; /* STRICTLY ONLY DISPLAYED WHEN CAMERA IS ACTIVELY CAPTURING */
 }
 
 #privacy-green-dot {
@@ -1115,41 +1121,623 @@ html, body, .gradio-container {
     }
 }
 
-.power-btn {
-    background: rgba(30, 41, 59, 0.95) !important;
-    color: #F87171 !important;
-    border: 1px solid rgba(239, 68, 68, 0.4) !important;
-    font-size: 0.88em !important;
+/* LIVE CAMERA STUDIO VIEWPORT & CONTROLS */
+.live-cam-container {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+}
+
+.cam-viewport {
+    position: relative !important;
+    width: 100% !important;
+    height: 310px !important;
+    max-height: 360px !important;
+    border-radius: 14px !important;
+    background: #020617 !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    overflow: hidden !important;
+    touch-action: none !important;
+    user-select: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+#live-camera-video {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    transform-origin: center center !important;
+    transition: transform 0.15s cubic-bezier(0.2, 0, 0, 1) !important;
+}
+
+.cam-placeholder {
+    position: absolute !important;
+    inset: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    background: rgba(15, 23, 42, 0.96) !important;
+    border: 2px dashed rgba(56, 189, 248, 0.35) !important;
+    border-radius: 14px !important;
+    padding: 20px !important;
+    text-align: center !important;
+    color: #94A3B8 !important;
+    z-index: 5 !important;
+}
+
+.cam-flash {
+    position: absolute !important;
+    inset: 0 !important;
+    background: #FFFFFF !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.12s ease-out !important;
+    z-index: 20 !important;
+}
+
+.cam-flash.flash-active {
+    opacity: 0.95 !important;
+}
+
+.cam-hud-top {
+    position: absolute !important;
+    top: 10px !important;
+    left: 10px !important;
+    right: 10px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    pointer-events: none !important;
+    z-index: 10 !important;
+    gap: 6px !important;
+}
+
+.hud-pill {
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    backdrop-filter: blur(8px) !important;
+    color: #F8FAFC !important;
+    padding: 4px 10px !important;
+    border-radius: 20px !important;
+    font-size: 0.78em !important;
     font-weight: 700 !important;
-    border-radius: 10px !important;
-    padding: 8px 12px !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
+    letter-spacing: 0.02em !important;
 }
 
-.power-btn:hover {
-    background: rgba(239, 68, 68, 0.2) !important;
-    border-color: #EF4444 !important;
-}
-
-.power-btn-on {
-    background: rgba(30, 41, 59, 0.95) !important;
+.cam-zoom-toast {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) scale(0.8) !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    border: 2px solid #10B981 !important;
     color: #34D399 !important;
-    border: 1px solid rgba(16, 185, 129, 0.4) !important;
-    font-size: 0.88em !important;
-    font-weight: 700 !important;
+    padding: 8px 18px !important;
+    border-radius: 99px !important;
+    font-size: 1.4em !important;
+    font-weight: 850 !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    z-index: 15 !important;
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.6) !important;
+}
+
+.cam-zoom-toast.visible {
+    opacity: 1 !important;
+    transform: translate(-50%, -50%) scale(1) !important;
+}
+
+.cam-mobile-hint {
+    position: absolute !important;
+    bottom: 8px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 20px !important;
+    padding: 3px 12px !important;
+    font-size: 0.72em !important;
+    color: #94A3B8 !important;
+    pointer-events: none !important;
+    white-space: nowrap !important;
+    z-index: 10 !important;
+}
+
+.cam-zoom-bar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
     border-radius: 10px !important;
-    padding: 8px 12px !important;
+    padding: 6px 10px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+}
+
+.zoom-label {
+    font-size: 0.78em !important;
+    font-weight: 700 !important;
+    color: #94A3B8 !important;
+    margin-right: 2px !important;
+    white-space: nowrap !important;
+}
+
+.zoom-pill {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: #E2E8F0 !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-size: 0.78em !important;
+    font-weight: 700 !important;
     cursor: pointer !important;
+    transition: all 0.15s ease !important;
+}
+
+.zoom-pill:hover, .zoom-pill:active {
+    background: rgba(16, 185, 129, 0.25) !important;
+    border-color: #10B981 !important;
+    color: #34D399 !important;
+}
+
+.zoom-slider {
+    flex: 1 !important;
+    accent-color: #10B981 !important;
+    cursor: pointer !important;
+    height: 6px !important;
+}
+
+.cam-primary-controls {
+    display: flex !important;
+    gap: 8px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+}
+
+.cam-power-btn {
+    flex: 1 !important;
+    background: rgba(30, 41, 59, 0.95) !important;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
+    color: #34D399 !important;
+    padding: 9px 12px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.88em !important;
+    cursor: pointer !important;
+    text-align: center !important;
     transition: all 0.2s ease !important;
 }
 
-.power-btn-on:hover {
+.cam-power-btn:hover {
     background: rgba(16, 185, 129, 0.2) !important;
     border-color: #10B981 !important;
 }
 
+.cam-power-off {
+    color: #F87171 !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+}
+
+.cam-power-off:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: #EF4444 !important;
+}
+
+.cam-switch-btn {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.25)) !important;
+    border: 1px solid rgba(99, 102, 241, 0.4) !important;
+    color: #C7D2FE !important;
+    padding: 9px 12px !important;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+    font-size: 0.85em !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+}
+
+.cam-switch-btn:hover {
+    background: rgba(99, 102, 241, 0.35) !important;
+    border-color: #818CF8 !important;
+}
+
+.cam-transform-bar {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+    margin-top: 6px !important;
+    width: 100% !important;
+}
+
+.cam-tool-btn {
+    background: rgba(30, 41, 59, 0.9) !important;
+    border: 1px solid rgba(148, 163, 184, 0.25) !important;
+    color: #E2E8F0 !important;
+    padding: 8px 6px !important;
+    border-radius: 8px !important;
+    font-size: 0.80em !important;
+    font-weight: 650 !important;
+    cursor: pointer !important;
+    text-align: center !important;
+    transition: all 0.2s ease !important;
+}
+
+.cam-tool-btn:hover {
+    background: rgba(51, 65, 85, 0.95) !important;
+    color: #FFFFFF !important;
+}
+
 footer { display: none !important; }
+"""
+
+CLIENT_JS = """
+() => {
+    if (window._produceVisionInitialized) return;
+    window._produceVisionInitialized = true;
+
+    window.customCameraStream = null;
+    window.cameraTransform = {
+        rotate: 0,
+        mirrorH: false,
+        flipV: false,
+        zoom: 1.0,
+        facingMode: 'environment'
+    };
+    window.isSnappingPhoto = false;
+
+    // 1. Hardware Privacy Light Monitor: strictly checks if any camera is streaming
+    function updatePrivacyIndicator() {
+        const indicator = document.getElementById('privacy-indicator');
+        if (!indicator) return;
+
+        let active = false;
+        if (window.customCameraStream && window.customCameraStream.active) {
+            const tracks = window.customCameraStream.getVideoTracks();
+            if (tracks && tracks.some(t => t.readyState === 'live' && t.enabled)) {
+                active = true;
+            }
+        }
+
+        const videos = document.querySelectorAll('video');
+        for (const v of videos) {
+            if (v.srcObject && v.srcObject.active) {
+                const tracks = v.srcObject.getVideoTracks();
+                if (tracks && tracks.some(t => t.readyState === 'live' && t.enabled)) {
+                    active = true;
+                    break;
+                }
+            }
+        }
+
+        if (window.isSnappingPhoto) {
+            active = true;
+        }
+
+        if (active) {
+            indicator.classList.add('camera-active-live');
+        } else {
+            indicator.classList.remove('camera-active-live');
+        }
+    }
+    setInterval(updatePrivacyIndicator, 200);
+
+    // 2. Camera Start, Stop, and Switch Facing Mode
+    window.startLiveCamera = async function() {
+        try {
+            if (window.customCameraStream) {
+                window.customCameraStream.getTracks().forEach(t => t.stop());
+            }
+
+            const constraints = {
+                video: {
+                    facingMode: { ideal: window.cameraTransform.facingMode },
+                    width: { ideal: 1920, min: 640 },
+                    height: { ideal: 1080, min: 480 }
+                },
+                audio: false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            window.customCameraStream = stream;
+
+            const video = document.getElementById('live-camera-video');
+            if (video) {
+                video.srcObject = stream;
+                await video.play().catch(e => console.log('Video play error:', e));
+            }
+
+            const placeholder = document.getElementById('cam-inactive-placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+
+            const hudTop = document.getElementById('cam-hud-top');
+            if (hudTop) hudTop.style.display = 'flex';
+
+            const zoomBar = document.getElementById('cam-zoom-bar');
+            if (zoomBar) zoomBar.style.display = 'flex';
+
+            const transformBar = document.getElementById('cam-transform-bar');
+            if (transformBar) transformBar.style.display = 'grid';
+
+            const mobileHint = document.getElementById('cam-mobile-hint');
+            if (mobileHint) mobileHint.style.display = 'block';
+
+            const switchBtn = document.getElementById('cam-switch-facing-btn');
+            if (switchBtn) switchBtn.style.display = 'inline-block';
+
+            const toggleBtn = document.getElementById('cam-toggle-power-btn');
+            if (toggleBtn) {
+                toggleBtn.textContent = '🔴 Turn Camera OFF';
+                toggleBtn.className = 'cam-power-btn cam-power-off';
+            }
+
+            const facingBadge = document.getElementById('cam-facing-badge');
+            if (facingBadge) {
+                facingBadge.textContent = window.cameraTransform.facingMode === 'user' ? '🤳 Front Camera' : '📷 Back Camera';
+            }
+
+            window.applyVideoTransform();
+            updatePrivacyIndicator();
+        } catch (err) {
+            console.error('Camera access error:', err);
+            alert('Camera access error: ' + (err.message || 'Please check camera permissions in your browser.'));
+        }
+    };
+
+    window.stopLiveCamera = function() {
+        if (window.customCameraStream) {
+            window.customCameraStream.getTracks().forEach(t => t.stop());
+            window.customCameraStream = null;
+        }
+
+        const video = document.getElementById('live-camera-video');
+        if (video) {
+            video.srcObject = null;
+        }
+
+        const placeholder = document.getElementById('cam-inactive-placeholder');
+        if (placeholder) placeholder.style.display = 'flex';
+
+        const hudTop = document.getElementById('cam-hud-top');
+        if (hudTop) hudTop.style.display = 'none';
+
+        const zoomBar = document.getElementById('cam-zoom-bar');
+        if (zoomBar) zoomBar.style.display = 'none';
+
+        const transformBar = document.getElementById('cam-transform-bar');
+        if (transformBar) transformBar.style.display = 'none';
+
+        const mobileHint = document.getElementById('cam-mobile-hint');
+        if (mobileHint) mobileHint.style.display = 'none';
+
+        const switchBtn = document.getElementById('cam-switch-facing-btn');
+        if (switchBtn) switchBtn.style.display = 'none';
+
+        const toggleBtn = document.getElementById('cam-toggle-power-btn');
+        if (toggleBtn) {
+            toggleBtn.textContent = '🟢 Start Live Camera';
+            toggleBtn.className = 'cam-power-btn';
+        }
+
+        updatePrivacyIndicator();
+    };
+
+    window.toggleCameraPower = function() {
+        if (window.customCameraStream && window.customCameraStream.active) {
+            window.stopLiveCamera();
+        } else {
+            window.startLiveCamera();
+        }
+    };
+
+    window.switchCameraFacing = async function() {
+        window.cameraTransform.facingMode = (window.cameraTransform.facingMode === 'user' ? 'environment' : 'user');
+        if (window.cameraTransform.facingMode === 'user') {
+            window.cameraTransform.mirrorH = true;
+        } else {
+            window.cameraTransform.mirrorH = false;
+        }
+        await window.startLiveCamera();
+    };
+
+    // 3. Live Rotation and Mirror / Flip
+    window.rotateCameraLive = function() {
+        window.cameraTransform.rotate = (window.cameraTransform.rotate + 90) % 360;
+        window.applyVideoTransform();
+    };
+
+    window.mirrorCameraLive = function() {
+        window.cameraTransform.mirrorH = !window.cameraTransform.mirrorH;
+        window.applyVideoTransform();
+    };
+
+    window.flipCameraVerticalLive = function() {
+        window.cameraTransform.flipV = !window.cameraTransform.flipV;
+        window.applyVideoTransform();
+    };
+
+    window.resetCameraTransform = function() {
+        window.cameraTransform.rotate = 0;
+        window.cameraTransform.mirrorH = (window.cameraTransform.facingMode === 'user');
+        window.cameraTransform.flipV = false;
+        window.setCameraZoom(1.0);
+        window.applyVideoTransform();
+    };
+
+    // 4. Live Zoom and Pinch Gesture
+    window.setCameraZoom = function(val) {
+        val = Math.min(Math.max(val, 1.0), 5.0);
+        window.cameraTransform.zoom = Math.round(val * 10) / 10;
+
+        const slider = document.getElementById('cam-zoom-slider');
+        if (slider) slider.value = window.cameraTransform.zoom;
+
+        const zoomBadge = document.getElementById('cam-zoom-badge');
+        if (zoomBadge) zoomBadge.textContent = '🔍 ' + window.cameraTransform.zoom.toFixed(1) + 'x';
+
+        const toast = document.getElementById('cam-zoom-toast');
+        if (toast) {
+            toast.textContent = window.cameraTransform.zoom.toFixed(1) + 'x';
+            toast.classList.add('visible');
+            clearTimeout(window._zoomToastTimeout);
+            window._zoomToastTimeout = setTimeout(() => {
+                toast.classList.remove('visible');
+            }, 1000);
+        }
+
+        if (window.customCameraStream) {
+            const track = window.customCameraStream.getVideoTracks()[0];
+            if (track && track.getCapabilities) {
+                const caps = track.getCapabilities();
+                if (caps.zoom) {
+                    const targetZoom = Math.min(Math.max(window.cameraTransform.zoom, caps.zoom.min), caps.zoom.max);
+                    try {
+                        track.applyConstraints({ advanced: [{ zoom: targetZoom }] }).catch(() => {});
+                    } catch(e) {}
+                }
+            }
+        }
+
+        window.applyVideoTransform();
+    };
+
+    window.applyVideoTransform = function() {
+        const video = document.getElementById('live-camera-video');
+        if (!video) return;
+
+        const rot = window.cameraTransform.rotate;
+        const mH = window.cameraTransform.mirrorH ? -1 : 1;
+        const fV = window.cameraTransform.flipV ? -1 : 1;
+        const z = window.cameraTransform.zoom;
+
+        video.style.transform = `rotate(${rot}deg) scale(${mH * z}, ${fV * z})`;
+
+        const rotBadge = document.getElementById('cam-rot-badge');
+        if (rotBadge) {
+            if (rot !== 0 || window.cameraTransform.mirrorH || window.cameraTransform.flipV) {
+                rotBadge.style.display = 'inline-flex';
+                let label = '📐 ' + rot + '°';
+                if (window.cameraTransform.mirrorH) label += ' ↔️';
+                if (window.cameraTransform.flipV) label += ' ↕️';
+                rotBadge.textContent = label;
+            } else {
+                rotBadge.style.display = 'none';
+            }
+        }
+    };
+
+    // 5. Touch Pinch-to-Zoom Gesture for Mobile Back Camera
+    function setupTouchGestures() {
+        const viewport = document.getElementById('cam-viewport');
+        if (!viewport) return;
+
+        let initialPinchDist = 0;
+        let pinchStartZoom = 1.0;
+
+        function getPinchDist(e) {
+            if (e.touches.length < 2) return 0;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            return Math.hypot(dx, dy);
+        }
+
+        viewport.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                initialPinchDist = getPinchDist(e);
+                pinchStartZoom = window.cameraTransform.zoom;
+            }
+        }, { passive: false });
+
+        viewport.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialPinchDist > 0) {
+                e.preventDefault();
+                const currentDist = getPinchDist(e);
+                if (currentDist > 0) {
+                    const factor = currentDist / initialPinchDist;
+                    const newZoom = pinchStartZoom * factor;
+                    window.setCameraZoom(newZoom);
+                }
+            }
+        }, { passive: false });
+
+        viewport.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                initialPinchDist = 0;
+            }
+        });
+
+        let lastTap = 0;
+        viewport.addEventListener('touchend', (e) => {
+            if (e.touches.length === 0) {
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    window.setCameraZoom(window.cameraTransform.zoom > 1.4 ? 1.0 : 2.0);
+                }
+                lastTap = now;
+            }
+        });
+    }
+    setupTouchGestures();
+
+    // 6. Real-time WYSIWYG Frame Capture
+    window.captureCameraFrame = function() {
+        const video = document.getElementById('live-camera-video');
+        if (!video || !video.videoWidth || !video.videoHeight || video.readyState < 2) {
+            return null;
+        }
+
+        const flash = document.getElementById('cam-flash-overlay');
+        if (flash) {
+            flash.classList.add('flash-active');
+            setTimeout(() => flash.classList.remove('flash-active'), 150);
+        }
+
+        window.isSnappingPhoto = true;
+        setTimeout(() => { window.isSnappingPhoto = false; updatePrivacyIndicator(); }, 800);
+
+        const vW = video.videoWidth;
+        const vH = video.videoHeight;
+        const rot = window.cameraTransform.rotate;
+        const mH = window.cameraTransform.mirrorH;
+        const fV = window.cameraTransform.flipV;
+        const z = window.cameraTransform.zoom;
+
+        const isSideways = (rot === 90 || rot === 270);
+        const canvas = document.createElement('canvas');
+        canvas.width = isSideways ? vH : vW;
+        canvas.height = isSideways ? vW : vH;
+
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate((rot * Math.PI) / 180);
+        ctx.scale(mH ? -1 : 1, fV ? -1 : 1);
+
+        const cropW = vW / z;
+        const cropH = vH / z;
+        const cropX = (vW - cropW) / 2;
+        const cropY = (vH - cropH) / 2;
+
+        ctx.drawImage(
+            video,
+            cropX, cropY, cropW, cropH,
+            -vW / 2, -vH / 2, vW, vH
+        );
+
+        return canvas.toDataURL('image/jpeg', 0.92);
+    };
+}
 """
 
 with gr.Blocks(
@@ -1174,7 +1762,7 @@ with gr.Blocks(
     </div>
     """)
 
-    # 🟢 PRIVACY CAMERA ACTIVE BADGE (Fixed Top Right, 70% larger than typical smartphone dots)
+    # 🟢 PRIVACY CAMERA ACTIVE BADGE (Fixed Top Right, 70% larger than typical smartphone dots, STRICTLY ONLY ACTIVE WHEN STREAMING)
     privacy_badge = gr.HTML(
         """
         <div id="privacy-indicator">
@@ -1187,7 +1775,6 @@ with gr.Blocks(
     )
 
     # Reactive Camera States
-    camera_active = gr.State(True)
     current_cam_photo = gr.State(None)
 
     with gr.Row(elem_id="main-app-row"):
@@ -1197,37 +1784,81 @@ with gr.Blocks(
             with gr.Tabs(elem_id="input-mode-tabs"):
                 # TAB 1: LIVE CAMERA (CLICK PIC & CLASSIFY)
                 with gr.TabItem("📸 Live Camera (Click & Classify)", id="tab-cam"):
-                    cam_input = gr.Image(
-                        label="📸 Live Camera Viewfinder",
-                        sources=["webcam"],
-                        type="numpy",
-                        height=310,
-                        visible=True,
-                    )
+                    cam_b64_transfer = gr.Textbox(elem_id="cam-b64-transfer", visible=False)
 
-                    cam_off_card = gr.HTML(
+                    gr.HTML(
                         """
-                        <div id="camera-off-overlay" style="width: 100%; height: 310px; background: rgba(15, 23, 42, 0.95); border: 2px dashed rgba(239, 68, 68, 0.4); border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #94A3B8; text-align: center; padding: 20px;">
-                            <span style="font-size: 3em;">📷🚫</span>
-                            <div style="font-weight: 800; color: #F87171; font-size: 1.15em;">Camera is Powered OFF</div>
-                            <div style="font-size: 0.88em; max-width: 320px; color: #CBD5E1;">Hardware camera stream is halted. No visual data is being captured or transmitted.</div>
-                            <div style="font-size: 0.80em; color: #64748B;">Tap <b>🟢 Turn Camera ON</b> below to reactivate.</div>
+                        <div id="live-cam-container" class="live-cam-container">
+                            <div id="cam-viewport" class="cam-viewport">
+                                <video id="live-camera-video" autoplay playsinline muted></video>
+                                <div id="cam-inactive-placeholder" class="cam-placeholder">
+                                    <div style="font-size: 2.5em; line-height: 1;">📸</div>
+                                    <div style="font-weight: 800; font-size: 1.1em; color: #34D399;">Live Camera Ready</div>
+                                    <div style="font-size: 0.85em; color: #CBD5E1; max-width: 320px; margin: 4px auto;">
+                                        Tap <b>🟢 Start Live Camera</b> below to activate live produce detection with real-time rotation, flip & mobile pinch zoom.
+                                    </div>
+                                </div>
+                                <div id="cam-flash-overlay" class="cam-flash"></div>
+                                <div id="cam-hud-top" class="cam-hud-top" style="display: none;">
+                                    <div id="cam-facing-badge" class="hud-pill">📷 Back Camera</div>
+                                    <div id="cam-zoom-badge" class="hud-pill">🔍 1.0x</div>
+                                    <div id="cam-rot-badge" class="hud-pill" style="display: none;">📐 90°</div>
+                                </div>
+                                <div id="cam-zoom-toast" class="cam-zoom-toast">1.0x</div>
+                                <div id="cam-mobile-hint" class="cam-mobile-hint" style="display: none;">
+                                    🤏 Pinch to Zoom · 👆 Double-tap 2x · 📷 Back Camera Ready
+                                </div>
+                            </div>
+
+                            <!-- Live Zoom Bar with Quick Pills and Slider -->
+                            <div id="cam-zoom-bar" class="cam-zoom-bar" style="display: none;">
+                                <span class="zoom-label">🔍 Zoom:</span>
+                                <button type="button" class="zoom-pill" onclick="window.setCameraZoom(1.0)">1x</button>
+                                <button type="button" class="zoom-pill" onclick="window.setCameraZoom(1.5)">1.5x</button>
+                                <button type="button" class="zoom-pill" onclick="window.setCameraZoom(2.0)">2x</button>
+                                <button type="button" class="zoom-pill" onclick="window.setCameraZoom(3.0)">3x</button>
+                                <button type="button" class="zoom-pill" onclick="window.setCameraZoom(5.0)">5x</button>
+                                <input type="range" id="cam-zoom-slider" min="1.0" max="5.0" step="0.1" value="1.0" class="zoom-slider" oninput="window.setCameraZoom(parseFloat(this.value))">
+                            </div>
+
+                            <!-- Primary Power and Mobile Switch Bar -->
+                            <div class="cam-primary-controls">
+                                <button type="button" id="cam-toggle-power-btn" class="cam-power-btn" onclick="window.toggleCameraPower()">
+                                    🟢 Start Live Camera
+                                </button>
+                                <button type="button" id="cam-switch-facing-btn" class="cam-tool-btn cam-switch-btn" onclick="window.switchCameraFacing()" style="display: none;">
+                                    🔄 Switch Camera (Front ⇄ Back)
+                                </button>
+                            </div>
+
+                            <!-- Live Rotation & Mirror Bar -->
+                            <div id="cam-transform-bar" class="cam-transform-bar" style="display: none;">
+                                <button type="button" class="cam-tool-btn" onclick="window.rotateCameraLive()" title="Rotate live camera feed 90 degrees clockwise">
+                                    🔄 Rotate 90°
+                                </button>
+                                <button type="button" class="cam-tool-btn" onclick="window.mirrorCameraLive()" title="Mirror live camera feed horizontally">
+                                    ↔️ Mirror (Flip H)
+                                </button>
+                                <button type="button" class="cam-tool-btn" onclick="window.flipCameraVerticalLive()" title="Flip live camera feed vertically">
+                                    ↕️ Flip Vertical
+                                </button>
+                                <button type="button" class="cam-tool-btn" onclick="window.resetCameraTransform()" title="Reset camera transform to normal">
+                                    ↺ Reset
+                                </button>
+                            </div>
                         </div>
-                        """,
-                        visible=False,
+                        """
                     )
 
-                    with gr.Row():
-                        cam_power_btn = gr.Button("🔴 Turn Camera OFF", elem_id="cam-power-btn", elem_classes=["power-btn"], size="sm")
-                        cam_snap_btn = gr.Button("📸 Click Pic & Classify Now", elem_classes=["analyze-btn"], size="lg")
+                    cam_snap_btn = gr.Button("📸 Click Pic & Classify Now", elem_classes=["analyze-btn"], size="lg")
 
                     with gr.Row(elem_id="camera-ctrl-row"):
-                        cam_rotate_btn = gr.Button("🔄 Rotate 90° Clockwise", elem_classes=["cam-btn"], size="sm")
-                        cam_flip_btn = gr.Button("↔️ Mirror / Flip", elem_classes=["cam-btn"], size="sm")
+                        cam_rotate_btn = gr.Button("🔄 Rotate Saved Pic 90°", elem_classes=["cam-btn"], size="sm")
+                        cam_flip_btn = gr.Button("↔️ Mirror Saved Pic", elem_classes=["cam-btn"], size="sm")
 
                     gr.HTML("""
                     <div style="font-size: 0.78em; color: #94A3B8; text-align: center; margin-top: 4px;">
-                        💡 <b>Tip:</b> Click <b>⚪ Camera Shutter</b> inside the viewfinder to snap, then tap <b>Click Pic & Classify Now</b>! If sideways on mobile, tap <b>Rotate 90°</b>.
+                        💡 <b>Tip:</b> Tap <b>🟢 Start Live Camera</b> to stream. Use <b>Pinch to Zoom</b> or <b>Rotate / Mirror</b> in real time, then tap <b>Click Pic & Classify Now</b>!
                     </div>
                     """)
 
@@ -1317,24 +1948,19 @@ with gr.Blocks(
         return detect_and_analyze(img, conf, iou, m)
 
     # 1. Live Camera Actions
-    cam_power_btn.click(
-        fn=toggle_camera_power,
-        inputs=[camera_active],
-        outputs=[camera_active, cam_input, cam_off_card, cam_power_btn, privacy_badge],
-        api_name=False,
-    )
-
     cam_snap_btn.click(
         fn=on_cam_snap_and_detect,
-        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
+        inputs=[cam_b64_transfer, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
-        api_name=False,
-    )
-
-    cam_input.change(
-        fn=on_cam_snap_and_detect,
-        inputs=[cam_input, conf_slider, iou_slider, preset_mode],
-        outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        js="""(b64, conf, iou, mode) => {
+            if (typeof window.captureCameraFrame === 'function') {
+                const frame = window.captureCameraFrame();
+                if (frame) {
+                    return [frame, conf, iou, mode];
+                }
+            }
+            return [b64, conf, iou, mode];
+        }""",
         api_name=False,
     )
 
@@ -1375,6 +2001,15 @@ with gr.Blocks(
         fn=on_auto_detect_file,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=analysis_outputs,
+        api_name=False,
+    )
+
+    # Initialize client-side studio script on load
+    demo.load(
+        fn=None,
+        inputs=None,
+        outputs=None,
+        js=CLIENT_JS,
         api_name=False,
     )
 

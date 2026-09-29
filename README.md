@@ -31,31 +31,41 @@ In addition to detecting **63 distinct fruit and vegetable varieties**, the syst
 
 ---
 
-## 📱 Mobile Compatibility & Camera Controls
+## 📱 Mobile Compatibility & Camera Studio Controls
 
 ProduceVision Studio Pro is engineered from the ground up for smartphone browsers (iOS Safari, Android Chrome, Firefox Mobile) as well as desktop displays:
 
-1. **Fluid Responsive UI**:
+1. **Fluid Responsive Touch UI**:
    - Dynamic viewport sizing with zero horizontal overflow.
-   - Stacks controls, live viewfinder, bounding box canvases, and nutrition dashboards into a clean, mobile-first touch layout.
+   - Stacks live camera controls, viewfinder, precision bounding box map, and nutrition tabs into a clean, mobile-first touch layout.
 
-2. **🟢 Prominent Green Camera Privacy Indicator**:
-   - Pinned to the top-right corner of the screen, featuring a pulsing emerald green aura and `📷 CAMERA ACTIVE` badge.
-   - Designed **70% larger than standard mobile OS privacy dots** for immediate, unmistakable user visibility.
-   - Automatically illuminates when the camera is streaming and turns off when the camera stream is halted.
+2. **🟢 Strict Camera Privacy Indicator (+70% Larger Emerald Glow)**:
+   - Pinned to the top-right corner of the screen, featuring a pulsing emerald green aura (`🟢 📷 CAMERA ACTIVE`).
+   - Designed **70% larger than typical smartphone OS privacy dots** for immediate, unmistakable user visibility.
+   - **Hardware-Level Accuracy**: Strictly hidden (`display: none`) until a physical camera stream is actively opened or a frame is being snapped in Chrome. As soon as the camera is stopped or turned off, the indicator vanishes completely.
 
-3. **🔴 Camera Power Toggle (`Turn Camera OFF / ON`)**:
-   - Hardware-level stream control: tapping **`🔴 Turn Camera OFF`** physically halts camera tracks (`track.stop()`) and frees device hardware, guaranteeing zero data capture.
-   - Tapping **`🟢 Turn Camera ON`** re-initializes the live viewfinder instantly.
+3. **🔍 Mobile Pinch-to-Zoom & Gesture Controls (1.0x – 5.0x)**:
+   - **Pinch Gesture**: Natural two-finger pinch on the camera viewfinder smoothly zooms in and out from 1.0x to 5.0x.
+   - **Double-Tap**: Quick double-tap jumps directly to 2.0x zoom or resets back to 1.0x.
+   - **Hardware + Digital Zoom**: Utilizes `MediaTrackConstraints` hardware zoom on mobile back cameras and crisp digital zoom fallback.
+   - **Quick Zoom Pills & Slider**: Tap `[1x]`, `[1.5x]`, `[2x]`, `[3x]`, `[5x]` or use the continuous slider for fast single-handed zooming.
+   - **Floating HUD Badge**: Real-time zoom level indicator (`🔍 2.0x`) overlays the viewfinder.
 
-4. **🔄 Zero-Reload 90° Clockwise Rotation & ↔️ Mirror/Flip**:
-   - Live hardware video feed rotates and mirrors smoothly via hardware-accelerated CSS transforms.
-   - Eliminates page reloading, stream dropouts, and loading spinners.
-   - Captures frames with exact user-configured orientation and mirroring directly into the AI classification pipeline.
+4. **🔄 Mobile Camera Switching (Front ⇄ Back)**:
+   - Dedicated `🔄 Switch Camera (Front ⇄ Back)` button to alternate between the high-resolution back/environment camera and the front selfie camera.
+   - Automatically adapts mirroring (default unmirrored for back produce scanning, natural selfie mirror for front camera).
 
-5. **⚡ Instant Frame Snap & Classify**:
-   - Tapping **`📸 Click Pic & Classify Now`** fires an authentic camera shutter animation and transfers native resolution frames to the dual-engine AI pipeline with zero lag.
-   - Works seamlessly with uploaded images, camera snapshots, or clipboard pastes.
+5. **🔄 Live 90° Clockwise Rotation, ↔️ Mirror & ↕️ Flip**:
+   - Rotates (90°, 180°, 270°, 0°) and mirrors horizontally/vertically **live on the active camera stream in real time**.
+   - Zero page reload, zero stream interruptions, zero infinite spinners.
+   - What-You-See-Is-What-You-Get (WYSIWYG): Captured frames retain the exact rotation, flip, and zoom crop directly into the AI classification pipeline.
+
+6. **🔴 Camera Power Toggle (`Turn Camera OFF / ON`)**:
+   - Hardware-level stream control: tapping **`🔴 Turn Camera OFF`** physically halts camera tracks (`track.stop()`) and frees device hardware, guaranteeing zero background visual data capture.
+   - Tapping **`🟢 Start Live Camera`** reactivates the live viewfinder instantly.
+
+7. **⚡ Instant One-Tap Snap & Classify**:
+   - Tapping **`📸 Click Pic & Classify Now`** triggers a camera shutter flash animation and transfers high-resolution WYSIWYG frames to the AI pipeline with zero lag. No hunting for tiny shutter buttons!
 
 ---
 
