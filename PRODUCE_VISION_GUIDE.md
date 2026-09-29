@@ -17,8 +17,6 @@
    - [Parameter Scenario Matrix & Cheat-Sheet](#parameter-scenario-matrix--cheat-sheet)
 4. [The MOAT: Unlimited Free Uploads vs. Proprietary AI](#4-the-moat-unlimited-free-uploads-vs-proprietary-ai)
 5. [Real-World Applications & Industry Deployments](#5-real-world-applications--industry-deployments)
-6. [Hardware & Privacy Architecture](#6-hardware--privacy-architecture)
-7. [API & Quickstart Integration](#7-api--quickstart-integration)
 
 ---
 
@@ -261,39 +259,6 @@ Use this quick-reference table to configure ProduceVision for optimal results in
 ### 4. 🌾 Agricultural Packing & Supply Chain Verification
 * **Field Harvest Sorting**: Farm hands can point mobile cameras at harvested crates to verify class uniformity and detect contaminants.
 * **Wholesale Receiving**: Logistics centers can verify pallet crate manifests in real time without manual piece-by-piece counting.
-
----
-
-## 6. Hardware & Privacy Architecture
-
-ProduceVision Studio Pro is engineered from the ground up to respect consumer privacy:
-1. **Client-Side Media Stream Control**: Camera capture uses standard browser `navigator.mediaDevices.getUserMedia`. Video feeds exist only in browser memory and are never streamed to remote servers.
-2. **Instant Hardware Track Release**: The millisecond **📸 Click Pic & Classify Now** is pressed, `window.stopLiveCamera()` terminates all active video tracks (`track.stop()`), ensuring the phone camera hardware indicator immediately powers off.
-3. **Hardware-Anchored Privacy Light**: A prominent pulsing emerald badge (`#fixed-privacy-pill`) is anchored to the browser root (`document.documentElement`), providing guaranteed visual confirmation whenever camera capture is active.
-4. **Button Inadvertent Click Shield**: The classification trigger automatically disables during processing and provides a visual warning if clicked while the camera is offline.
-
----
-
-## 7. API & Quickstart Integration
-
-### Run Locally
-```bash
-# Clone the repository
-git clone https://github.com/DeathSHMASHER/Fruit-and-veg-.git
-cd Fruit-and-veg-
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Launch ProduceVision Studio Pro
-python app.py
-```
-Open your browser at `http://127.0.0.1:7860`.
-
-### Deploy to Hugging Face Spaces
-```bash
-python upload_to_hf.py <YOUR_HF_WRITE_TOKEN>
-```
 
 ---
 

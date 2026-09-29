@@ -44,4 +44,6 @@ ehthumbs.db
 
 # Deployment scripts
 upload_to_hf.py
+PRODUCE_VISION_GUIDE.html
+
 

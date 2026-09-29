@@ -660,6 +660,22 @@ def flip_file_and_detect(image, conf_thresh, iou_thresh, mode):
     canvas, ov, nut, rec, chk = detect_and_analyze(flip_np, conf_thresh, iou_thresh, mode)
     return flip_np, canvas, ov, nut, rec, chk
 
+def on_analyze_uploaded_file(image, conf_thresh, iou_thresh, mode):
+    """Classify uploaded produce image. Validates that an image exists before running analysis."""
+    if image is None:
+        msg = """
+        <div style="background: rgba(245, 158, 11, 0.18); border: 2px solid #F59E0B; border-radius: 12px; padding: 22px; text-align: center; color: #FCD34D;">
+            <div style="font-size: 2.4em; margin-bottom: 8px;">⚠️</div>
+            <div style="font-weight: 850; font-size: 1.25em; color: #FEF3C7; letter-spacing: -0.01em;">⚠️ Please Upload an Image First!</div>
+            <p style="font-size: 0.94em; margin-top: 10px; color: #E2E8F0; line-height: 1.5; max-width: 440px; margin-left: auto; margin-right: auto;">
+                No produce image was found in the upload container. Please drop an image file, click to upload, or paste from clipboard before clicking <b>Analyze Uploaded Produce</b>.
+            </p>
+        </div>
+        """
+        return None, msg, "", "", ""
+    return detect_and_analyze(image, conf_thresh, iou_thresh, mode)
+
+
 
 # ==============================================================================
 # 📊 UI DASHBOARDS & SPECIAL ENTITY ADVISORIES
@@ -1258,6 +1274,47 @@ div[role="tablist"] > button {
     cursor: not-allowed !important;
 }
 
+/* BUTTON UPLOAD-DISABLED STATE */
+#file-analyze-btn.btn-upload-disabled,
+.btn-upload-disabled {
+    background: #1E293B !important;
+    background-image: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+    color: #64748B !important;
+    border: 1px dashed rgba(148, 163, 184, 0.4) !important;
+    opacity: 0.65 !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+}
+
+#file-analyze-btn.btn-upload-disabled:hover,
+.btn-upload-disabled:hover {
+    background: #334155 !important;
+    color: #94A3B8 !important;
+    border-color: #F59E0B !important;
+    opacity: 0.85 !important;
+    cursor: not-allowed !important;
+}
+
+/* Upload Container Highlight Pulse when Analyze Clicked Without Image */
+.upload-highlight-pulse {
+    animation: upload-pulse 0.7s infinite ease-in-out !important;
+    outline: 2px solid #F59E0B !important;
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.45) !important;
+    border-radius: 12px !important;
+}
+
+@keyframes upload-pulse {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(245, 158, 11, 0.3);
+        outline-color: rgba(245, 158, 11, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 24px rgba(245, 158, 11, 0.85);
+        outline-color: rgba(245, 158, 11, 1);
+    }
+}
+
+
 /* LIVE CAMERA STUDIO VIEWPORT & CONTROLS */
 .live-cam-container {
     width: 100% !important;
@@ -1544,6 +1601,8 @@ CLIENT_JS = """
     window.isSnappingPhoto = false;
     window._snapProcessingActive = false;
     window._snapSafetyTimer = null;
+    window._uploadProcessingActive = false;
+    window._uploadSafetyTimer = null;
     window._warningToastTimer = null;
 
     // 0. Ensure Fixed Privacy Indicator is Mounted to document.documentElement
@@ -2069,6 +2128,125 @@ CLIENT_JS = """
         }
     };
 
+    // 10. Upload Produce Image Detection & Button Controller
+    window.hasUploadedProduceImage = function() {
+        const tabUpload = document.getElementById('tab-upload');
+        if (!tabUpload) return false;
+
+        // Check if there is an image tag with loaded source
+        const imgs = tabUpload.querySelectorAll('img');
+        for (const img of imgs) {
+            if (!img) continue;
+            const src = img.getAttribute('src') || img.src || '';
+            if (src && !src.includes('placeholder') && !src.startsWith('data:image/svg+xml;base64,PHN2Zy')) {
+                if (img.naturalWidth > 0 || src.startsWith('blob:') || src.startsWith('data:image/') || src.includes('/file=') || src.includes('http')) {
+                    return true;
+                }
+            }
+        }
+
+        // Check for clear/download action button injected by Gradio when file is uploaded
+        const clearBtn = tabUpload.querySelector('button[aria-label="Clear"], button[aria-label="Clear Image"], button.clear-button, button[aria-label="Download"]');
+        if (clearBtn) return true;
+
+        // Check file input element files
+        const fileInputs = tabUpload.querySelectorAll('input[type="file"]');
+        for (const fi of fileInputs) {
+            if (fi.files && fi.files.length > 0) return true;
+        }
+
+        return false;
+    };
+
+    window.showUploadWarningToast = function(msg) {
+        let toast = document.getElementById('cam-warning-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'cam-warning-toast';
+            toast.className = 'cam-warning-toast';
+            (document.documentElement || document.body).appendChild(toast);
+        }
+        toast.innerHTML = `<span style="font-size: 1.35em; line-height: 1;">⚠️</span> <span>${msg || "Please upload an image first!"}</span>`;
+        toast.classList.add('toast-show');
+
+        // Highlight the Upload container / dropzone
+        const tabUpload = document.getElementById('tab-upload');
+        if (tabUpload) {
+            const dropzone = tabUpload.querySelector('.upload-container, .image-container, div[data-testid="image"]') || tabUpload;
+            dropzone.classList.add('upload-highlight-pulse');
+            setTimeout(() => dropzone.classList.remove('upload-highlight-pulse'), 2500);
+            dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        clearTimeout(window._warningToastTimer);
+        window._warningToastTimer = setTimeout(() => {
+            toast.classList.remove('toast-show');
+        }, 3500);
+    };
+
+    window.disableUploadAnalyzeButton = function() {
+        window._uploadProcessingActive = true;
+        const btn = document.getElementById('file-analyze-btn');
+        if (btn) {
+            btn.disabled = true;
+            btn.classList.remove('btn-upload-disabled');
+            btn.classList.add('btn-processing');
+            btn.innerHTML = '<span>⏳ Analyzing Uploaded Produce...</span>';
+            btn.style.pointerEvents = 'none';
+        }
+        clearTimeout(window._uploadSafetyTimer);
+        window._uploadSafetyTimer = setTimeout(() => {
+            window.reEnableUploadAnalyzeButton();
+        }, 12000);
+    };
+
+    window.reEnableUploadAnalyzeButton = function() {
+        window._uploadProcessingActive = false;
+        const btn = document.getElementById('file-analyze-btn');
+        if (btn) {
+            btn.disabled = false;
+            btn.classList.remove('btn-processing');
+            btn.style.pointerEvents = 'auto';
+            if (window.hasUploadedProduceImage()) {
+                btn.classList.remove('btn-upload-disabled');
+                btn.innerHTML = '<span>🔍 Analyze Uploaded Produce</span>';
+            } else {
+                btn.classList.add('btn-upload-disabled');
+                btn.innerHTML = '<span>🔍 Analyze Uploaded Produce</span>';
+            }
+        }
+    };
+
+    window.updateUploadButtonState = function() {
+        if (window._uploadProcessingActive) return;
+        const hasImg = window.hasUploadedProduceImage();
+        const btn = document.getElementById('file-analyze-btn');
+        const tabUpload = document.getElementById('tab-upload');
+
+        if (btn) {
+            if (hasImg) {
+                btn.classList.remove('btn-upload-disabled');
+                btn.removeAttribute('title');
+            } else {
+                btn.classList.add('btn-upload-disabled');
+                btn.setAttribute('title', 'Please upload or paste an image first');
+            }
+        }
+
+        if (tabUpload) {
+            const subBtns = tabUpload.querySelectorAll('.cam-btn');
+            subBtns.forEach(b => {
+                if (hasImg) {
+                    b.classList.remove('btn-upload-disabled');
+                    b.removeAttribute('title');
+                } else {
+                    b.classList.add('btn-upload-disabled');
+                    b.setAttribute('title', 'Please upload an image first');
+                }
+            });
+        }
+    };
+
     function setupProcessingWatcher() {
         const outputCol = document.getElementById('output-col');
         if (!outputCol) {
@@ -2083,13 +2261,19 @@ CLIENT_JS = """
                     window.scrollToResultWindow();
                 }, 300);
             }
+            if (window._uploadProcessingActive) {
+                setTimeout(() => {
+                    window.reEnableUploadAnalyzeButton();
+                    window.scrollToResultWindow();
+                }, 300);
+            }
         });
 
         observer.observe(outputCol, { childList: true, subtree: true, characterData: true });
     }
     setupProcessingWatcher();
 
-    // Initialize button state and privacy indicator on load
+    // Initialize button states and privacy indicator on load
     getOrCreatePrivacyIndicator();
     setTimeout(() => {
         const snapBtn = document.getElementById('cam-snap-btn');
@@ -2097,6 +2281,11 @@ CLIENT_JS = """
             snapBtn.classList.add('btn-cam-off');
         }
     }, 400);
+
+    // Watch upload image container state
+    setInterval(window.updateUploadButtonState, 350);
+    setTimeout(window.updateUploadButtonState, 300);
+    setTimeout(window.updateUploadButtonState, 1000);
 }
 """
 
@@ -2360,13 +2549,28 @@ with gr.Blocks(
 
     # 2. Upload / File Actions
     file_analyze_btn.click(
-        fn=detect_and_analyze,
+        fn=on_analyze_uploaded_file,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=analysis_outputs,
-        js="""() => {
+        js="""(file_val, conf, iou, mode) => {
+            const hasImg = (typeof window.hasUploadedProduceImage === 'function')
+                ? window.hasUploadedProduceImage()
+                : !!file_val;
+
+            if (!hasImg && !file_val) {
+                if (typeof window.showUploadWarningToast === 'function') {
+                    window.showUploadWarningToast("⚠️ Please upload an image first!");
+                }
+                return [null, conf, iou, mode];
+            }
+
+            if (typeof window.disableUploadAnalyzeButton === 'function') {
+                window.disableUploadAnalyzeButton();
+            }
             if (typeof window.scrollToResultWindow === 'function') {
                 window.scrollToResultWindow();
             }
+            return [file_val, conf, iou, mode];
         }""",
         api_name=False,
     )
@@ -2374,12 +2578,36 @@ with gr.Blocks(
         fn=rotate_file_and_detect,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=[file_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        js="""(file_val, conf, iou, mode) => {
+            const hasImg = (typeof window.hasUploadedProduceImage === 'function')
+                ? window.hasUploadedProduceImage()
+                : !!file_val;
+            if (!hasImg && !file_val) {
+                if (typeof window.showUploadWarningToast === 'function') {
+                    window.showUploadWarningToast("⚠️ Please upload an image first before rotating!");
+                }
+                return [null, conf, iou, mode];
+            }
+            return [file_val, conf, iou, mode];
+        }""",
         api_name=False,
     )
     file_flip_btn.click(
         fn=flip_file_and_detect,
         inputs=[file_input, conf_slider, iou_slider, preset_mode],
         outputs=[file_input, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
+        js="""(file_val, conf, iou, mode) => {
+            const hasImg = (typeof window.hasUploadedProduceImage === 'function')
+                ? window.hasUploadedProduceImage()
+                : !!file_val;
+            if (!hasImg && !file_val) {
+                if (typeof window.showUploadWarningToast === 'function') {
+                    window.showUploadWarningToast("⚠️ Please upload an image first before mirroring!");
+                }
+                return [null, conf, iou, mode];
+            }
+            return [file_val, conf, iou, mode];
+        }""",
         api_name=False,
     )
     file_input.change(
