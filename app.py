@@ -608,11 +608,11 @@ def on_cam_snap_and_detect(photo, conf_thresh, iou_thresh, mode):
     """Classify live camera snapshot. Supports Base64 data URLs, numpy arrays, or PIL images."""
     if photo is None or (isinstance(photo, str) and not photo.strip()):
         msg = """
-        <div style="background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 10px; padding: 18px; text-align: center; color: #FCD34D;">
-            <div style="font-size: 2.2em; margin-bottom: 6px;">📸</div>
-            <div style="font-weight: 800; font-size: 1.1em; color: #FDE68A;">Camera is Not Started</div>
-            <p style="font-size: 0.88em; margin-top: 6px; color: #CBD5E1;">
-                Tap <b>🟢 Start Live Camera</b> in the viewfinder above to turn on your camera, then tap <b>📸 Click Pic & Classify Now</b>!
+        <div style="background: rgba(245, 158, 11, 0.18); border: 2px solid #F59E0B; border-radius: 12px; padding: 22px; text-align: center; color: #FCD34D;">
+            <div style="font-size: 2.4em; margin-bottom: 8px;">⚠️</div>
+            <div style="font-weight: 850; font-size: 1.25em; color: #FEF3C7; letter-spacing: -0.01em;">⚠️ Please Turn On "Start Live Cam" First!</div>
+            <p style="font-size: 0.94em; margin-top: 10px; color: #E2E8F0; line-height: 1.5; max-width: 440px; margin-left: auto; margin-right: auto;">
+                The live camera feed is currently turned off. Please tap <b>🟢 Start Live Camera</b> above to begin streaming before clicking to capture produce.
             </p>
         </div>
         """
@@ -1074,16 +1074,17 @@ html, body, .gradio-container {
     }
 }
 
-/* PRIVACY GREEN LIGHT - 70% LARGER THAN MOBILE OS INDICATOR WITH PULSING GLOW (PINNED ON SCROLL) */
-#privacy-indicator {
+/* PRIVACY GREEN LIGHT - PINNED ON SCROLL (100% FIXED IN VIEWPORT) */
+#privacy-indicator,
+#fixed-privacy-pill {
     position: fixed !important;
     top: 14px !important;
     right: 14px !important;
-    z-index: 999999999 !important;
+    z-index: 2147483647 !important;
     display: none !important; /* STRICTLY HIDDEN UNTIL CAMERA IS ACTIVE */
     align-items: center !important;
     gap: 8px !important;
-    background: rgba(5, 46, 22, 0.96) !important;
+    background: rgba(5, 46, 22, 0.98) !important;
     border: 2px solid #10B981 !important;
     border-radius: 99px !important;
     padding: 7px 16px 7px 12px !important;
@@ -1093,19 +1094,20 @@ html, body, .gradio-container {
     letter-spacing: 0.03em !important;
     box-shadow: 0 0 24px rgba(16, 185, 129, 0.95), 0 4px 16px rgba(0, 0, 0, 0.7) !important;
     backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
     pointer-events: none !important;
     animation: privacy-pulse 2s infinite ease-in-out !important;
-    -webkit-transform: translateZ(0) !important;
-    transform: translateZ(0) !important; /* Hardware-accelerated fixed layer so it never jitters or leaves view during scroll */
 }
 
-#privacy-indicator.camera-active-live {
-    display: flex !important; /* STRICTLY ONLY DISPLAYED WHEN CAMERA IS ACTIVELY CAPTURING */
+#privacy-indicator.camera-active-live,
+#fixed-privacy-pill.camera-active-live {
+    display: inline-flex !important; /* STRICTLY ONLY DISPLAYED WHEN CAMERA IS ACTIVELY CAPTURING */
 }
 
-#privacy-green-dot {
-    width: 15px !important;
-    height: 15px !important;
+#privacy-green-dot,
+#fixed-privacy-green-dot {
+    width: 14px !important;
+    height: 14px !important;
     border-radius: 50% !important;
     background-color: #10B981 !important;
     box-shadow: 0 0 12px #34D399 !important;
@@ -1115,12 +1117,58 @@ html, body, .gradio-container {
 @keyframes privacy-pulse {
     0%, 100% {
         box-shadow: 0 0 16px rgba(16, 185, 129, 0.7), 0 4px 12px rgba(0, 0, 0, 0.5);
-        transform: scale(1);
     }
     50% {
-        box-shadow: 0 0 30px rgba(16, 185, 129, 1), 0 4px 18px rgba(0, 0, 0, 0.7);
-        transform: scale(1.05);
+        box-shadow: 0 0 32px rgba(16, 185, 129, 1), 0 4px 18px rgba(0, 0, 0, 0.7);
     }
+}
+
+/* FLOATING WARNING TOAST */
+.cam-warning-toast {
+    position: fixed !important;
+    top: 24px !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(-50px) !important;
+    background: linear-gradient(135deg, rgba(180, 83, 9, 0.98), rgba(220, 38, 38, 0.98)) !important;
+    border: 2px solid #F59E0B !important;
+    border-radius: 99px !important;
+    padding: 12px 24px !important;
+    color: #FFFFFF !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: clamp(13px, 3.2vw, 15px) !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: 0 8px 30px rgba(245, 158, 11, 0.7), 0 4px 16px rgba(0, 0, 0, 0.8) !important;
+    z-index: 2147483647 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    max-width: 92vw !important;
+    text-align: center !important;
+}
+
+.cam-warning-toast.toast-show {
+    opacity: 1 !important;
+    transform: translateX(-50%) translateY(0) !important;
+    pointer-events: auto !important;
+}
+
+@keyframes highlight-pulse {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+        border-color: #10B981;
+    }
+    50% {
+        box-shadow: 0 0 28px rgba(245, 158, 11, 0.95), 0 0 16px rgba(16, 185, 129, 0.95);
+        border-color: #F59E0B;
+    }
+}
+
+.cam-highlight-pulse {
+    animation: highlight-pulse 0.7s infinite ease-in-out !important;
 }
 
 /* RESPONSIVE MOBILE TABS: BOTH TABS CLEANLY VISIBLE SIDE-BY-SIDE WITHOUT OVERFLOW */
@@ -1158,6 +1206,27 @@ div[role="tablist"] > button {
     pointer-events: none !important;
     opacity: 0.7 !important;
     box-shadow: none !important;
+}
+
+/* BUTTON CAM-OFF (DISABLED-LOOKING) STATE */
+#cam-snap-btn.btn-cam-off,
+.btn-cam-off {
+    background: #1E293B !important;
+    background-image: linear-gradient(135deg, #1E293B 0%, #0F172A 100%) !important;
+    color: #64748B !important;
+    border: 1px dashed rgba(148, 163, 184, 0.4) !important;
+    opacity: 0.65 !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+}
+
+#cam-snap-btn.btn-cam-off:hover,
+.btn-cam-off:hover {
+    background: #334155 !important;
+    color: #94A3B8 !important;
+    border-color: #F59E0B !important;
+    opacity: 0.85 !important;
+    cursor: not-allowed !important;
 }
 
 /* LIVE CAMERA STUDIO VIEWPORT & CONTROLS */
@@ -1444,10 +1513,31 @@ CLIENT_JS = """
         facingMode: 'environment'
     };
     window.isSnappingPhoto = false;
+    window._snapProcessingActive = false;
+    window._snapSafetyTimer = null;
+    window._warningToastTimer = null;
+
+    // 0. Ensure Fixed Privacy Indicator is Mounted to document.documentElement
+    function getOrCreatePrivacyIndicator() {
+        let el = document.getElementById('fixed-privacy-pill');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'fixed-privacy-pill';
+            el.innerHTML = `
+                <span id="fixed-privacy-green-dot"></span>
+                <span style="font-size: 1.25em; line-height: 1;">📷</span>
+                <span>CAMERA ACTIVE</span>
+            `;
+            // Append directly to <html> root to guarantee immune to any Gradio/parent container overflow or transform
+            (document.documentElement || document.body).appendChild(el);
+        }
+        return el;
+    }
 
     // 1. Hardware Privacy Light Monitor: strictly checks if any camera is streaming
     function updatePrivacyIndicator() {
-        const indicator = document.getElementById('privacy-indicator');
+        const ind = getOrCreatePrivacyIndicator();
+        const oldInd = document.getElementById('privacy-indicator');
 
         let active = false;
         if (window.customCameraStream && window.customCameraStream.active) {
@@ -1474,9 +1564,17 @@ CLIENT_JS = """
 
         const container = document.getElementById('live-cam-container');
         const placeholder = document.getElementById('cam-inactive-placeholder');
+        const hudBadge = document.getElementById('cam-live-indicator-pill');
+        const snapBtn = document.getElementById('cam-snap-btn');
 
         if (active) {
-            if (indicator) indicator.classList.add('camera-active-live');
+            ind.classList.add('camera-active-live');
+            ind.style.setProperty('display', 'inline-flex', 'important');
+            if (oldInd) {
+                oldInd.classList.add('camera-active-live');
+                oldInd.style.setProperty('display', 'inline-flex', 'important');
+            }
+            if (hudBadge) hudBadge.style.display = 'inline-flex';
             if (container) container.classList.add('camera-is-streaming');
             if (placeholder) {
                 placeholder.classList.add('hidden');
@@ -1484,8 +1582,20 @@ CLIENT_JS = """
                 placeholder.style.setProperty('visibility', 'hidden', 'important');
                 placeholder.style.setProperty('opacity', '0', 'important');
             }
+            if (snapBtn && !window._snapProcessingActive) {
+                snapBtn.classList.remove('btn-cam-off');
+                snapBtn.disabled = false;
+                snapBtn.style.pointerEvents = 'auto';
+                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
+            }
         } else {
-            if (indicator) indicator.classList.remove('camera-active-live');
+            ind.classList.remove('camera-active-live');
+            ind.style.setProperty('display', 'none', 'important');
+            if (oldInd) {
+                oldInd.classList.remove('camera-active-live');
+                oldInd.style.setProperty('display', 'none', 'important');
+            }
+            if (hudBadge) hudBadge.style.display = 'none';
             if (container && (!window.customCameraStream || !window.customCameraStream.active)) {
                 container.classList.remove('camera-is-streaming');
             }
@@ -1494,6 +1604,10 @@ CLIENT_JS = """
                 placeholder.style.removeProperty('display');
                 placeholder.style.removeProperty('visibility');
                 placeholder.style.removeProperty('opacity');
+            }
+            if (snapBtn && !window._snapProcessingActive) {
+                snapBtn.classList.add('btn-cam-off');
+                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
             }
         }
     }
@@ -1574,6 +1688,16 @@ CLIENT_JS = """
                 facingBadge.textContent = window.cameraTransform.facingMode === 'user' ? '🤳 Front Camera' : '📷 Back Camera';
             }
 
+            // Update snap button to active
+            const snapBtn = document.getElementById('cam-snap-btn');
+            if (snapBtn) {
+                snapBtn.classList.remove('btn-cam-off');
+                snapBtn.classList.remove('btn-processing');
+                snapBtn.disabled = false;
+                snapBtn.style.pointerEvents = 'auto';
+                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
+            }
+
             window.applyVideoTransform();
             updatePrivacyIndicator();
         } catch (err) {
@@ -1623,6 +1747,13 @@ CLIENT_JS = """
         if (toggleBtn) {
             toggleBtn.textContent = '🟢 Start Live Camera';
             toggleBtn.className = 'cam-power-btn';
+        }
+
+        const snapBtn = document.getElementById('cam-snap-btn');
+        if (snapBtn && !window._snapProcessingActive) {
+            snapBtn.classList.add('btn-cam-off');
+            snapBtn.classList.remove('btn-processing');
+            snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
         }
 
         updatePrivacyIndicator();
@@ -1836,16 +1967,31 @@ CLIENT_JS = """
         return canvas.toDataURL('image/jpeg', 0.92);
     };
 
-    // 7. Pinned Hardware Privacy Light Mounting
-    function mountPrivacyIndicator() {
-        const ind = document.getElementById('privacy-indicator');
-        if (ind && ind.parentElement !== document.body) {
-            document.body.appendChild(ind);
+    // 7. Floating Warning Toast & Cam Button Highlight
+    window.showCamWarningToast = function(msg) {
+        let toast = document.getElementById('cam-warning-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'cam-warning-toast';
+            toast.className = 'cam-warning-toast';
+            (document.documentElement || document.body).appendChild(toast);
         }
-    }
-    mountPrivacyIndicator();
-    setTimeout(mountPrivacyIndicator, 500);
-    setTimeout(mountPrivacyIndicator, 1500);
+        toast.innerHTML = `<span style="font-size: 1.35em; line-height: 1;">⚠️</span> <span>${msg || "Please turn on Start live cam first!"}</span>`;
+        toast.classList.add('toast-show');
+
+        // Highlight the Start Live Camera button
+        const startBtn = document.getElementById('cam-toggle-power-btn');
+        if (startBtn) {
+            startBtn.classList.add('cam-highlight-pulse');
+            setTimeout(() => startBtn.classList.remove('cam-highlight-pulse'), 2500);
+            startBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        clearTimeout(window._warningToastTimer);
+        window._warningToastTimer = setTimeout(() => {
+            toast.classList.remove('toast-show');
+        }, 3500);
+    };
 
     // 8. Mobile Auto-Jump / Smooth Scroll to Result Window
     window.scrollToResultWindow = function() {
@@ -1858,18 +2004,14 @@ CLIENT_JS = """
     };
 
     // 9. Snap Button Locking & Mutation Observer Watcher
-    window._snapProcessingActive = false;
-    window._snapSafetyTimer = null;
-
     window.disableSnapButton = function() {
         window._snapProcessingActive = true;
         const snapBtn = document.getElementById('cam-snap-btn') || document.querySelector('#input-col .analyze-btn');
         if (snapBtn) {
-            if (!snapBtn.dataset.originalHtml) {
-                snapBtn.dataset.originalHtml = snapBtn.innerHTML;
-            }
-            snapBtn.innerHTML = '<span>⏳ Analyzing Produce with AI...</span>';
+            snapBtn.disabled = true;
+            snapBtn.classList.remove('btn-cam-off');
             snapBtn.classList.add('btn-processing');
+            snapBtn.innerHTML = '<span>⏳ Analyzing Produce with AI...</span>';
             snapBtn.style.pointerEvents = 'none';
         }
         clearTimeout(window._snapSafetyTimer);
@@ -1881,14 +2023,20 @@ CLIENT_JS = """
     window.reEnableSnapButton = function() {
         window._snapProcessingActive = false;
         const snapBtn = document.getElementById('cam-snap-btn') || document.querySelector('#input-col .analyze-btn');
-        if (snapBtn && snapBtn.classList.contains('btn-processing')) {
-            if (snapBtn.dataset.originalHtml) {
-                snapBtn.innerHTML = snapBtn.dataset.originalHtml;
-            } else {
-                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
-            }
+        if (snapBtn) {
+            snapBtn.disabled = false;
             snapBtn.classList.remove('btn-processing');
             snapBtn.style.pointerEvents = 'auto';
+
+            const isCamActive = (window.customCameraStream && window.customCameraStream.active &&
+                window.customCameraStream.getVideoTracks().some(t => t.readyState === 'live' && t.enabled));
+            if (isCamActive) {
+                snapBtn.classList.remove('btn-cam-off');
+                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
+            } else {
+                snapBtn.classList.add('btn-cam-off');
+                snapBtn.innerHTML = '<span>📸 Click Pic & Classify Now</span>';
+            }
         }
     };
 
@@ -1911,6 +2059,15 @@ CLIENT_JS = """
         observer.observe(outputCol, { childList: true, subtree: true, characterData: true });
     }
     setupProcessingWatcher();
+
+    // Initialize button state and privacy indicator on load
+    getOrCreatePrivacyIndicator();
+    setTimeout(() => {
+        const snapBtn = document.getElementById('cam-snap-btn');
+        if (snapBtn && !window.customCameraStream) {
+            snapBtn.classList.add('btn-cam-off');
+        }
+    }, 400);
 }
 """
 
@@ -1975,6 +2132,9 @@ with gr.Blocks(
                                 <div id="cam-flash-overlay" class="cam-flash"></div>
                                 <div id="cam-hud-top" class="cam-hud-top" style="display: none;">
                                     <div id="cam-facing-badge" class="hud-pill">📷 Back Camera</div>
+                                    <div id="cam-live-indicator-pill" class="hud-pill" style="display: none; background: rgba(5, 46, 22, 0.95); border-color: #10B981; color: #6EE7B7; font-weight: 800;">
+                                        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10B981; box-shadow: 0 0 8px #34D399; display: inline-block; margin-right: 4px;"></span>● CAM ACTIVE
+                                    </div>
                                     <div id="cam-zoom-badge" class="hud-pill">🔍 1.0x</div>
                                     <div id="cam-rot-badge" class="hud-pill" style="display: none;">📐 90°</div>
                                 </div>
@@ -2127,6 +2287,17 @@ with gr.Blocks(
         inputs=[cam_b64_transfer, conf_slider, iou_slider, preset_mode],
         outputs=[current_cam_photo, annotated_canvas, overview_html, nutrition_html, recipes_html, checklist_txt],
         js="""(b64, conf, iou, mode) => {
+            // Check if live camera stream is currently active
+            const isCamActive = (window.customCameraStream && window.customCameraStream.active &&
+                window.customCameraStream.getVideoTracks().some(t => t.readyState === 'live' && t.enabled));
+
+            if (!isCamActive) {
+                if (typeof window.showCamWarningToast === 'function') {
+                    window.showCamWarningToast("⚠️ Please turn on 'Start Live Cam' first!");
+                }
+                return [null, conf, iou, mode];
+            }
+
             let frame = b64;
             if (typeof window.captureCameraFrame === 'function') {
                 const captured = window.captureCameraFrame();
