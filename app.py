@@ -2237,21 +2237,6 @@ with gr.Blocks(
                         step=0.05,
                     )
 
-            # 1-CLICK DEMO EXAMPLES
-            gr.Markdown("### 🌟 Instant 1-Click Test Showcase")
-            demo_samples = [
-                ["samples/potatoes.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/fruit_basket.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/bell_peppers.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/tomatoes.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/carrots.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
-                ["samples/banana.jpg", 0.30, 0.40, "🎯 Consensus Mode (Ultra-Precision)"],
-            ]
-            gr.Examples(
-                examples=demo_samples,
-                inputs=[file_input, conf_slider, iou_slider, preset_mode],
-                label="Click any sample card below to test immediately:",
-            )
 
         # RIGHT COLUMN: ANNOTATED CANVAS & DETAILED INTELLIGENCE
         with gr.Column(scale=7, elem_id="output-col"):
