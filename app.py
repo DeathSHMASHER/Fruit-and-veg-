@@ -1157,7 +1157,7 @@ html, body, .gradio-container {
 .cam-placeholder {
     position: absolute !important;
     inset: 0 !important;
-    display: flex !important;
+    display: flex;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
@@ -1169,6 +1169,18 @@ html, body, .gradio-container {
     text-align: center !important;
     color: #94A3B8 !important;
     z-index: 5 !important;
+    transition: opacity 0.2s ease, visibility 0.2s ease !important;
+}
+
+/* STRICT RULE: When camera is streaming or hidden, placeholder is completely removed from view */
+.cam-placeholder.hidden,
+.camera-is-streaming .cam-placeholder,
+.camera-is-streaming #cam-inactive-placeholder {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    z-index: -10 !important;
 }
 
 .cam-flash {
@@ -1397,7 +1409,6 @@ CLIENT_JS = """
     // 1. Hardware Privacy Light Monitor: strictly checks if any camera is streaming
     function updatePrivacyIndicator() {
         const indicator = document.getElementById('privacy-indicator');
-        if (!indicator) return;
 
         let active = false;
         if (window.customCameraStream && window.customCameraStream.active) {
@@ -1422,10 +1433,29 @@ CLIENT_JS = """
             active = true;
         }
 
+        const container = document.getElementById('live-cam-container');
+        const placeholder = document.getElementById('cam-inactive-placeholder');
+
         if (active) {
-            indicator.classList.add('camera-active-live');
+            if (indicator) indicator.classList.add('camera-active-live');
+            if (container) container.classList.add('camera-is-streaming');
+            if (placeholder) {
+                placeholder.classList.add('hidden');
+                placeholder.style.setProperty('display', 'none', 'important');
+                placeholder.style.setProperty('visibility', 'hidden', 'important');
+                placeholder.style.setProperty('opacity', '0', 'important');
+            }
         } else {
-            indicator.classList.remove('camera-active-live');
+            if (indicator) indicator.classList.remove('camera-active-live');
+            if (container && (!window.customCameraStream || !window.customCameraStream.active)) {
+                container.classList.remove('camera-is-streaming');
+            }
+            if (placeholder && (!window.customCameraStream || !window.customCameraStream.active)) {
+                placeholder.classList.remove('hidden');
+                placeholder.style.removeProperty('display');
+                placeholder.style.removeProperty('visibility');
+                placeholder.style.removeProperty('opacity');
+            }
         }
     }
     setInterval(updatePrivacyIndicator, 200);
@@ -1455,8 +1485,17 @@ CLIENT_JS = """
                 await video.play().catch(e => console.log('Video play error:', e));
             }
 
+            // Immediately mark container as streaming and hide placeholder
+            const container = document.getElementById('live-cam-container');
+            if (container) container.classList.add('camera-is-streaming');
+
             const placeholder = document.getElementById('cam-inactive-placeholder');
-            if (placeholder) placeholder.style.display = 'none';
+            if (placeholder) {
+                placeholder.classList.add('hidden');
+                placeholder.style.setProperty('display', 'none', 'important');
+                placeholder.style.setProperty('visibility', 'hidden', 'important');
+                placeholder.style.setProperty('opacity', '0', 'important');
+            }
 
             const hudTop = document.getElementById('cam-hud-top');
             if (hudTop) hudTop.style.display = 'flex';
@@ -1468,7 +1507,19 @@ CLIENT_JS = """
             if (transformBar) transformBar.style.display = 'grid';
 
             const mobileHint = document.getElementById('cam-mobile-hint');
-            if (mobileHint) mobileHint.style.display = 'block';
+            if (mobileHint) {
+                mobileHint.style.display = 'block';
+                mobileHint.style.opacity = '1';
+                clearTimeout(window._mobileHintTimer);
+                window._mobileHintTimer = setTimeout(() => {
+                    const h = document.getElementById('cam-mobile-hint');
+                    if (h) {
+                        h.style.transition = 'opacity 0.6s ease';
+                        h.style.opacity = '0';
+                        setTimeout(() => { if (h) h.style.display = 'none'; }, 600);
+                    }
+                }, 3000);
+            }
 
             const switchBtn = document.getElementById('cam-switch-facing-btn');
             if (switchBtn) switchBtn.style.display = 'inline-block';
@@ -1503,8 +1554,16 @@ CLIENT_JS = """
             video.srcObject = null;
         }
 
+        const container = document.getElementById('live-cam-container');
+        if (container) container.classList.remove('camera-is-streaming');
+
         const placeholder = document.getElementById('cam-inactive-placeholder');
-        if (placeholder) placeholder.style.display = 'flex';
+        if (placeholder) {
+            placeholder.classList.remove('hidden');
+            placeholder.style.removeProperty('display');
+            placeholder.style.removeProperty('visibility');
+            placeholder.style.removeProperty('opacity');
+        }
 
         const hudTop = document.getElementById('cam-hud-top');
         if (hudTop) hudTop.style.display = 'none';
