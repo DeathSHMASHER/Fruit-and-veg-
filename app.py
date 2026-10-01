@@ -2,7 +2,7 @@ import os
 import sys
 import warnings
 warnings.filterwarnings("ignore")
- 
+
 # Configure UTF-8 for consoles
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
