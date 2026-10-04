@@ -29,6 +29,9 @@ torch_cache/
 gradio_cached_examples/
 flagged/
 
+# Opt-in user-contributed training examples (may contain private photos)
+training_feedback/
+
 # VSCode / IDE
 .vscode/
 *.code-workspace
@@ -45,5 +48,4 @@ ehthumbs.db
 # Deployment scripts
 upload_to_hf.py
 PRODUCE_VISION_GUIDE.html
-
 

@@ -1,6 +1,11 @@
 import os
 import sys
 import warnings
+import json
+import threading
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
 warnings.filterwarnings("ignore")
 
 # Configure UTF-8 for consoles
@@ -200,6 +205,13 @@ _yolo_63 = None
 _yolo_coco = None
 _vit_36 = None
 
+# User-confirmed examples are collected separately from model weights.  Never
+# train directly from a prediction: that would reinforce the model's mistakes.
+FEEDBACK_DIR = Path(__file__).resolve().parent / "training_feedback"
+FEEDBACK_IMAGES_DIR = FEEDBACK_DIR / "images"
+FEEDBACK_MANIFEST = FEEDBACK_DIR / "verified_examples.jsonl"
+_feedback_lock = threading.Lock()
+
 def get_models():
     """Load high-accuracy models lazily."""
     global _yolo_63, _yolo_coco, _vit_36
@@ -228,6 +240,42 @@ def get_models():
         )
 
     return _yolo_63, _yolo_coco, _vit_36
+
+
+def save_verified_example(image, corrected_label: str, category: str, consent: bool) -> str:
+    """Save an opt-in, human-confirmed single-item example for later training.
+
+    Training is intentionally an offline reviewed step; a prediction must not
+    become a label unless the user explicitly confirms or corrects it.
+    """
+    if not consent:
+        return "Select the consent box before contributing a training example."
+    pil_img = safe_to_pil(image)
+    label = clean_label(corrected_label or "")
+    if pil_img is None:
+        return "Add a clear image containing one primary fruit or vegetable."
+    if not label or label == "Unknown":
+        return "Enter the correct produce name (for example: Apple, Carrot, or Bell Pepper)."
+    if category not in {"Fruit", "Vegetable"}:
+        return "Choose whether the confirmed item is a fruit or vegetable."
+
+    record_id = uuid.uuid4().hex
+    image_name = f"{record_id}.jpg"
+    record = {
+        "id": record_id,
+        "image": f"images/{image_name}",
+        "label": label,
+        "category": category,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "reviewed": False,
+        "source": "user_confirmed_feedback",
+    }
+    with _feedback_lock:
+        FEEDBACK_IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+        pil_img.save(FEEDBACK_IMAGES_DIR / image_name, format="JPEG", quality=95)
+        with FEEDBACK_MANIFEST.open("a", encoding="utf-8") as manifest:
+            manifest.write(json.dumps(record, ensure_ascii=False) + "\n")
+    return f"Saved verified {category.lower()} example: {label}. It will be included in the next reviewed training batch."
 
 # ==============================================================================
 # 🛠️ HELPER FUNCTIONS (ROTATION, FLIP, DEDUPLICATION)
@@ -484,23 +532,17 @@ def detect_and_analyze(
             clean_vit = clean_label(vit_label)
             yolo_conf = cand["conf"]
 
-            # Smart Consensus Logic:
-            if clean_yolo.lower() == clean_vit.lower() or clean_yolo.lower() in clean_vit.lower():
+            # Only exact agreement can verify a prediction.  The ViT has fewer
+            # classes than the specialist YOLO model, so allowing it to replace
+            # a conflicting YOLO class created confident-but-wrong labels.
+            if clean_yolo.lower() == clean_vit.lower():
                 final_label = clean_yolo
-                final_conf = max(yolo_conf, vit_conf)
-                verified = True
-            elif "potato" in clean_yolo.lower() or "potato" in clean_vit.lower():
-                final_label = "Potato" if "sweet" not in clean_yolo.lower() and "sweet" not in clean_vit.lower() else "Sweet Potato"
-                final_conf = max(yolo_conf, vit_conf)
+                final_conf = yolo_conf
                 verified = True
             elif yolo_conf >= 0.35 and clean_yolo.lower() in ["pumpkin", "avocado", "lemon", "lime", "zucchini", "gourd", "mushroom"]:
                 final_label = clean_yolo
                 final_conf = yolo_conf
-                verified = True
-            elif vit_conf > 0.70 and vit_conf > yolo_conf:
-                final_label = clean_vit
-                final_conf = vit_conf
-                verified = True
+                verified = False
             else:
                 final_label = clean_yolo
                 final_conf = yolo_conf
@@ -509,7 +551,7 @@ def detect_and_analyze(
             color = BOX_COLORS[idx % len(BOX_COLORS)]
             category = get_category(final_label)
             emoji = get_emoji(final_label)
-            tag_prefix = "FRUIT" if category == "Fruit" else "VEG"
+            tag_prefix = "FRUIT" if category == "Fruit" else "VEG" if category == "Vegetable" else "PRODUCE"
 
         # Draw Precision Bounding Box on Canvas
         line_w = max(3, int(min(W, H) * 0.005))
@@ -759,7 +801,11 @@ def build_overview_dashboard(detections: List[Dict]) -> str:
             badge = f"<span style='background: rgba(99,102,241,0.2); color: {d['color']}; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>{d['category']}</span>"
         else:
             sub_text = f"{nut['calories']} kcal · {nut['carbs']}g Carbs · {nut['protein']}g Protein · <span style='color: #38BDF8;'>{nut['vitamins'].split(',')[0]}</span>"
-            badge = "<span style='background: rgba(16,185,129,0.2); color: #34D399; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>✓ Verified Produce</span>"
+            badge = (
+                "<span style='background: rgba(16,185,129,0.2); color: #34D399; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>✓ Cross-verified</span>"
+                if d.get("verified") else
+                "<span style='background: rgba(245,158,11,0.18); color: #FCD34D; font-size: 0.7em; padding: 2px 6px; border-radius: 6px; font-weight: 600;'>! Needs confirmation</span>"
+            )
 
         html += f"""
         <div style="background: rgba(30, 41, 59, 0.65); border: 1px solid rgba(148, 163, 184, 0.15); border-left: 5px solid {d['color']}; border-radius: 8px; padding: 8px 10px; display: flex; justify-content: space-between; align-items: center; gap: 6px;">
@@ -2463,6 +2509,32 @@ with gr.Blocks(
                         step=0.05,
                     )
 
+            with gr.Accordion("🧠 Help Improve Recognition", open=False):
+                gr.Markdown(
+                    "Contribute a **human-confirmed, single-item** photo for the next reviewed training batch. "
+                    "Your image is never used as a label unless you explicitly submit it here."
+                )
+                feedback_image = gr.Image(
+                    label="Confirmed single-item image",
+                    type="numpy",
+                    sources=["upload", "clipboard"],
+                    height=180,
+                )
+                feedback_label = gr.Textbox(
+                    label="Correct produce name",
+                    placeholder="Example: Apple, Carrot, Bell Pepper",
+                )
+                feedback_category = gr.Radio(
+                    choices=["Fruit", "Vegetable"],
+                    label="Category",
+                )
+                feedback_consent = gr.Checkbox(
+                    label="I confirm this label is correct and consent to use this image for model improvement.",
+                    value=False,
+                )
+                feedback_save_btn = gr.Button("Save verified training example", variant="secondary")
+                feedback_status = gr.Markdown()
+
 
         # RIGHT COLUMN: ANNOTATED CANVAS & DETAILED INTELLIGENCE
         with gr.Column(scale=7, elem_id="output-col"):
@@ -2619,6 +2691,13 @@ with gr.Blocks(
                 window.scrollToResultWindow();
             }
         }""",
+        api_name=False,
+    )
+
+    feedback_save_btn.click(
+        fn=save_verified_example,
+        inputs=[feedback_image, feedback_label, feedback_category, feedback_consent],
+        outputs=feedback_status,
         api_name=False,
     )
 

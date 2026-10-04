@@ -213,6 +213,14 @@ The application will launch and automatically open your default browser at:
 
 ---
 
+## 🧠 Improving Accuracy with Verified Feedback
+
+The app does **not** retrain itself from its own predictions. Self-training on unverified guesses amplifies errors over time, especially between visually similar produce. Instead, use **Help Improve Recognition** to submit a clear photo containing one primary item, its corrected name, and its Fruit/Vegetable category.
+
+Confirmed examples are stored locally in `training_feedback/` and are intentionally ignored by Git because they may be private. Review this set for wrong labels, duplicates, blurry images, and class imbalance before using it in a fine-tuning run. This produces a dependable learning dataset rather than silently degrading the model.
+
+---
+
 ## 🌐 Cloud Deployment (Hugging Face Spaces)
 
 This repository is pre-configured for direct deployment on Hugging Face Spaces using the Gradio SDK.
